@@ -17,7 +17,13 @@ func SetupRoutes(app *fiber.App, driver neo4j.DriverWithContext, logger *zap.Log
 
 	app.Get("/users/:id", handlers.GetUserByID(driver, logger))
 
+	app.Get("/users", handlers.FindUserByFilter(driver, logger))
+
 	app.Put("/users/:id", handlers.UpdateUserByID(driver, logger))
 
 	app.Get("/users/:id/friends", handlers.GetUserFriendByID(driver, logger))
+
+	app.Post("/users/:id/friends", handlers.AddFriend(driver, logger))
+
+	app.Delete("/users/:id/friends", handlers.Unfriend(driver, logger))
 }

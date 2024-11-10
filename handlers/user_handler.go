@@ -56,6 +56,43 @@ func GetUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 	}
 }
 
+// TODO: [/] Find User using Filter
+func FindUserByFilter(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		var req models.UserRequestFilter
+
+		// Validate the request data
+		if err := ValidateQuery(c, &req); err != nil {
+			logger.Warn("Validation failed", zap.Error(err))
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  "fail",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+
+		// Fetch users with the given filter
+		users, err := fetchUserByFilter(c.Context(), driver, req, logger)
+		if err != nil {
+			logger.Error("Failed to fetch users", zap.Error(err))
+			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to retrieve users",
+				"data":    nil,
+			})
+		}
+
+		// Successful response
+		successMessage := "User(s) retrieved successfully"
+		logger.Info(successMessage)
+		return c.Status(http.StatusOK).JSON(fiber.Map{
+			"status":  "success",
+			"message": successMessage,
+			"data":    users,
+		})
+	}
+}
+
 // UpdateUserProfile handles updating a user's profile in the Neo4j database.
 func UpdateUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
@@ -177,15 +214,95 @@ func CreateUser(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handle
 	}
 }
 
+// TODO: [/] Add Friend
 func AddFriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		return nil
+		var req models.UserFriendRequest
+		userID1 := c.Params("id")
+
+		if err := validateUserID(userID1); err != nil {
+			c.Locals("message", err.Error())
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  "fail",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+
+		if err := ValidateRequest(c, &req); err != nil {
+			c.Locals("message", err)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  "fail",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+
+		c.BodyParser(req)
+		userID2 := req.UserID
+		err := addFriend(c.Context(), driver, userID1, userID2, logger)
+		if err != nil {
+			c.Locals("message", err.Error())
+			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+				"status":  "error",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+
+		successMessage := fmt.Sprintf("Successfully add user %s to user %s", userID1, userID2)
+		c.Locals("message", successMessage)
+		return c.Status(http.StatusOK).JSON(fiber.Map{
+			"status":  "success",
+			"message": successMessage,
+			"data":    nil,
+		})
 	}
 }
 
+// TODO: [/] Unfriend
 func Unfriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		return nil
+		var req models.UserFriendRequest
+		userID1 := c.Params("id")
+
+		if err := validateUserID(userID1); err != nil {
+			c.Locals("message", err.Error())
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  "fail",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+
+		if err := ValidateRequest(c, &req); err != nil {
+			c.Locals("message", err)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  "fail",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+
+		c.BodyParser(req)
+		userID2 := req.UserID
+		err := unfriend(c.Context(), driver, userID1, userID2, logger)
+		if err != nil {
+			c.Locals("message", err.Error())
+			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+				"status":  "error",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+
+		successMessage := fmt.Sprintf("Successfully remove user %s from user %s", userID1, userID2)
+		c.Locals("message", successMessage)
+		return c.Status(http.StatusOK).JSON(fiber.Map{
+			"status":  "success",
+			"message": successMessage,
+			"data":    nil,
+		})
 	}
 }
 
@@ -201,11 +318,7 @@ func SendMessage(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 	}
 }
 
-func FindUserByFilter(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		return nil
-	}
-}
+// ------------------------------- main -----------------------------------------------
 
 func createUser(ctx context.Context, driver neo4j.DriverWithContext, user models.CreateUserRequest, logger *zap.Logger) (map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
@@ -412,6 +525,62 @@ func fetchUserByID(ctx context.Context, driver neo4j.DriverWithContext, id strin
 	return user, nil
 }
 
+func fetchUserByFilter(ctx context.Context, driver neo4j.DriverWithContext, filter models.UserRequestFilter, logger *zap.Logger) ([]map[string]interface{}, error) {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeRead,
+	})
+	defer session.Close(ctx)
+
+	query := `
+    MATCH (u:UserProfile)-[:BELONGS_TO_STUDENT_TYPE]->(st:StudentType)
+    OPTIONAL MATCH (st)<-[:HAS_STUDENT_TYPE]-(fd:Field)
+    WHERE (fd.name = $fieldName OR $fieldName IS NULL)
+    AND (st.name = $studentTypeName OR $studentTypeName IS NULL)
+    RETURN u
+  `
+
+	// Run the query with parameters
+	result, err := session.Run(ctx, query, map[string]interface{}{
+		"studentTypeName": filter.StudentType,
+		"fieldName":       filter.Field,
+	})
+	if err != nil {
+		logger.Error("Failed to run query", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Error retrieving data")
+	}
+
+	// Collect query results
+	records, err := result.Collect(ctx)
+	if err != nil {
+		logger.Error("Failed to collect query results", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Error retrieving data")
+	}
+
+	var users []map[string]interface{}
+
+	// Process each record
+	for _, record := range records {
+		userNode, ok := record.Get("u")
+		if !ok {
+			logger.Warn("User node not found in record")
+			continue
+		}
+
+		userMap := userNode.(neo4j.Node).Props
+
+		for key, value := range userMap {
+			if value == nil || value == "" {
+				delete(userMap, key)
+			}
+		}
+
+		users = append(users, userMap)
+	}
+
+	return users, nil
+}
+
 func updateUserByID(ctx context.Context, driver neo4j.DriverWithContext, id string, updatedData models.UserProfile, logger *zap.Logger) (models.UserProfile, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
@@ -457,4 +626,70 @@ func updateUserByID(ctx context.Context, driver neo4j.DriverWithContext, id stri
 	}
 
 	return updatedUser, nil
+}
+
+func addFriend(ctx context.Context, driver neo4j.DriverWithContext, userID1 string, userID2 string, logger *zap.Logger) error {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeWrite,
+	})
+	defer session.Close(ctx)
+
+	query := `
+    MATCH (u1:UserProfile {user_id: $userID1}), (u2:UserProfile {user_id: $userID2})
+    MERGE (u1)-[r:FRIEND]->(u2)
+    ON CREATE SET r.created_timestamp = timestamp()
+    MERGE (u2)-[r2:FRIEND]->(u1)
+    ON CREATE SET r2.created_timestamp = timestamp()
+    RETURN u1, u2
+  `
+
+	result, err := session.Run(ctx, query, map[string]interface{}{"userID1": userID1, "userID2": userID2})
+	if err != nil {
+		logger.Error("Failed to add friend", zap.Error(err))
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to add friend")
+	}
+
+	_, err = result.Single(ctx)
+	if err != nil {
+		logger.Error("Failed to retrieve result", zap.Error(err))
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve result after creating relationship")
+	}
+
+	return nil
+}
+
+func unfriend(ctx context.Context, driver neo4j.DriverWithContext, userID1 string, userID2 string, logger *zap.Logger) error {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeWrite,
+	})
+	defer session.Close(ctx)
+
+	if userID1 == userID2 {
+		return fiber.NewError(fiber.StatusBadRequest, "Cannot unfriend oneself")
+	}
+
+	query := `
+    MATCH (u1:UserProfile {user_id: $userID1})-[r1:FRIEND]->(u2:UserProfile {user_id: $userID2})
+    DELETE r1
+    WITH u1, u2
+    MATCH (u2)-[r2:FRIEND]->(u1)
+    DELETE r2
+    RETURN u1, u2
+  `
+
+	result, err := session.Run(ctx, query, map[string]interface{}{"userID1": userID1, "userID2": userID2})
+	if err != nil {
+		logger.Error("Failed to add friend", zap.Error(err))
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to add friend")
+	}
+
+	_, err = result.Single(ctx)
+	if err != nil {
+		logger.Error("Failed to retrieve result", zap.Error(err))
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve result after creating relationship")
+	}
+
+	return nil
 }

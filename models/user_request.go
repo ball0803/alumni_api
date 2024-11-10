@@ -21,3 +21,12 @@ type CreateUserRequest struct {
 	ProfilePicture string    `json:"profile_picture,omitempty" mapstructure:"profile_picture" validate:"omitempty,url"`
 	Role           string    `json:"role,omitempty" mapstructure:"role" validate:"required,oneof=student alumnus staff"`
 }
+
+type UserFriendRequest struct {
+	UserID string `json:"user_id,omitempty" mapstructure:"user_id" validate:"required,uuid4"`
+}
+
+type UserRequestFilter struct {
+	StudentType string `json:"student_type,omitempty" mapstructure:"student_type" validate:"omitempty"`
+	Field       string `json:"field,omitempty" mapstructure:"field" validate:"omitempty"`
+}
