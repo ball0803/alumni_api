@@ -4,6 +4,7 @@ import (
 	"alumni_api/config"
 	"alumni_api/db"
 	"alumni_api/logger"
+	"alumni_api/middlewares"
 	"alumni_api/routes"
 	"context"
 	"github.com/gofiber/fiber/v2"
@@ -25,6 +26,8 @@ func main() {
 
 	// Set up Fiber app
 	app := fiber.New()
+	app.Use(middlewares.RequestLogger(logger))
+
 	routes.SetupRoutes(app, driver, logger)
 
 	// Start the server

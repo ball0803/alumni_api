@@ -13,5 +13,11 @@ func SetupRoutes(app *fiber.App, driver neo4j.DriverWithContext, logger *zap.Log
 		return c.SendString("Hello, World!")
 	})
 
+	app.Post("/users", handlers.CreateUser(driver, logger))
+
 	app.Get("/users/:id", handlers.GetUserByID(driver, logger))
+
+	app.Put("/users/:id", handlers.UpdateUserByID(driver, logger))
+
+	app.Get("/users/:id/friends", handlers.GetUserFriendByID(driver, logger))
 }

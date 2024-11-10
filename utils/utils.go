@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"github.com/mitchellh/mapstructure"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j/dbtype"
 	"reflect"
@@ -15,8 +16,8 @@ func dateToTimeHook(from reflect.Type, to reflect.Type, data interface{}) (inter
 	return data, nil
 }
 
-// Reusable decoder function
-func DecodeToStruct(input map[string]interface{}, output interface{}) error {
+// MapToStruct decodes a map into a struct, using custom hooks and tags
+func MapToStruct(input map[string]interface{}, output interface{}) error {
 	decoderConfig := &mapstructure.DecoderConfig{
 		DecodeHook:       dateToTimeHook,
 		Result:           output,
@@ -30,4 +31,97 @@ func DecodeToStruct(input map[string]interface{}, output interface{}) error {
 	}
 
 	return decoder.Decode(input)
+}
+
+// StructToMap converts a struct to a map, ignoring empty fields
+func StructToMap(data interface{}) (map[string]interface{}, error) {
+	result := make(map[string]interface{})
+
+	// Use mapstructure to decode struct into a map with tags support
+	config := &mapstructure.DecoderConfig{
+		TagName:    "mapstructure",
+		Result:     &result,
+		ZeroFields: false, // Avoid filling zero-valued fields in the map
+	}
+
+	decoder, err := mapstructure.NewDecoder(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create decoder: %w", err)
+	}
+
+	if err := decoder.Decode(data); err != nil {
+		return nil, fmt.Errorf("failed to decode struct: %w", err)
+	}
+
+	// Remove nil or empty maps from `result`
+	for key, value := range result {
+		if IsEmpty(value) {
+			delete(result, key)
+		}
+	}
+
+	return result, nil
+}
+
+// SetEmptyMapsToNil will set empty maps in the struct to nil
+func SetEmptyMapsToNil(v interface{}) {
+	val := reflect.ValueOf(v)
+	// Only proceed if the input is a pointer to a struct
+	if val.Kind() != reflect.Ptr || val.IsNil() || val.Elem().Kind() != reflect.Struct {
+		return
+	}
+
+	// Dereference the pointer to get the actual struct value
+	val = val.Elem()
+
+	// Iterate over all fields in the struct
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Field(i)
+
+		// Check if the field is a map and if it's empty
+		if field.Kind() == reflect.Map && field.IsNil() {
+			continue
+		}
+		if field.Kind() == reflect.Map && field.Len() == 0 {
+			// Set the empty map to nil
+			field.Set(reflect.Zero(field.Type()))
+		} else if field.Kind() == reflect.Struct {
+			// Recursively handle nested structs
+			SetEmptyMapsToNil(field.Addr().Interface())
+		}
+	}
+}
+
+// Helper function to check if a value is zero-valued, nil, or an empty map
+func IsEmpty(value interface{}) bool {
+	v := reflect.ValueOf(value)
+	if !v.IsValid() || v.IsZero() {
+		return true
+	}
+	if v.Kind() == reflect.Map || v.Kind() == reflect.Slice || v.Kind() == reflect.Array {
+		return v.Len() == 0
+	}
+
+	if v.Kind() == reflect.Struct {
+		// Check if all fields are zero values
+		for i := 0; i < v.NumField(); i++ {
+			if !v.Field(i).IsZero() {
+				return false
+			}
+		}
+		return true
+	}
+
+	if v.Kind() == reflect.Struct && v.Type() == reflect.TypeOf(time.Time{}) {
+		return v.Interface().(time.Time).IsZero()
+	}
+
+	return false
+}
+
+func FormatDate(value time.Time) interface{} {
+	if value.IsZero() {
+		return nil
+	}
+	return value.Format("2006-01-02")
 }

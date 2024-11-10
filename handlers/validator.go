@@ -1,15 +1,38 @@
 package handlers
 
 import (
+	"fmt"
+	"reflect"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 )
 
 var validate = validator.New()
 
+// validateUserID validates the user ID from the request parameters.
+func validateUserID(id string) error {
+	if id == "" {
+		return fiber.NewError(fiber.StatusBadRequest, errIDRequired)
+	}
+	if err := validate.Var(id, "len=6,numeric"); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, errInvalidIDFormat)
+	}
+	return nil
+}
+
 func ValidateRequest(c *fiber.Ctx, req interface{}) error {
 	if err := c.BodyParser(req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request payload")
+	}
+
+	reqValue := reflect.ValueOf(req).Elem()
+	for i := 0; i < reqValue.NumField(); i++ {
+		field := reqValue.Type().Field(i)
+		value := reqValue.Field(i)
+		if field.Tag.Get("validate") == "required" && value.IsZero() {
+			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Field '%s' is required", field.Name))
+		}
 	}
 
 	// Validate the struct
