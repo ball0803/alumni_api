@@ -56,7 +56,6 @@ func GetUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 	}
 }
 
-// TODO: [/] Find User using Filter
 func FindUserByFilter(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req models.UserRequestFilter
@@ -140,6 +139,38 @@ func UpdateUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 	}
 }
 
+func DeleteUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		id := c.Params("id")
+		if err := validateUUID(id); err != nil {
+			c.Locals("message", err.Error())
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  "fail",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+
+		err := deleteUserByID(c.Context(), driver, id, logger)
+		if err != nil {
+			c.Locals("message", err.Error())
+			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+				"status":  "error",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+
+		successMessage := "User removed successfully"
+		c.Locals("message", successMessage)
+		return c.Status(http.StatusOK).JSON(fiber.Map{
+			"status":  "success",
+			"message": successMessage,
+			"data":    nil,
+		})
+	}
+}
+
 func GetUserFriendByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		id := c.Params("id")
@@ -184,6 +215,7 @@ func GetUserFriendByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 func CreateUser(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req models.CreateUserRequest
+		req.UserID = uuid.New().String()
 
 		if err := ValidateRequest(c, &req); err != nil {
 			c.Locals("message", err)
@@ -214,7 +246,6 @@ func CreateUser(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handle
 	}
 }
 
-// TODO: [/] Add Friend
 func AddFriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req models.UserFriendRequest
@@ -260,7 +291,6 @@ func AddFriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler
 	}
 }
 
-// TODO: [/] Unfriend
 func Unfriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req models.UserFriendRequest
@@ -306,15 +336,240 @@ func Unfriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler 
 	}
 }
 
-func GetUserMessageByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+func AddStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		return nil
+		var req models.StudentInfoRequest
+
+		if err := ValidateRequest(c, &req); err != nil {
+			c.Locals("message", err)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  "fail",
+				"message": err,
+				"data":    nil,
+			})
+		}
+
+		id := c.Params("id")
+		if err := validateUUID(id); err != nil {
+			c.Locals("message", err.Error())
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  "fail",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+
+		err := addStudentInfo(c.Context(), driver, id, req, logger)
+		if err != nil {
+			c.Locals("message", err.Error())
+			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+				"status":  "error",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+
+		successMessage := "User profile updated successfully"
+		c.Locals("message", successMessage)
+		return c.Status(http.StatusOK).JSON(fiber.Map{
+			"status":  "success",
+			"message": successMessage,
+			"data":    nil,
+		})
 	}
 }
 
-func SendMessage(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+func UpdateStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		return nil
+		var req models.StudentInfoRequest
+
+		if err := ValidateRequest(c, &req); err != nil {
+			c.Locals("message", err)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  "fail",
+				"message": err,
+				"data":    nil,
+			})
+		}
+
+		id := c.Params("id")
+		if err := validateUUID(id); err != nil {
+			c.Locals("message", err.Error())
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  "fail",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+
+		err := updateStudentInfo(c.Context(), driver, id, req, logger)
+		if err != nil {
+			c.Locals("message", err.Error())
+			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+				"status":  "error",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+
+		successMessage := "User student info updated successfully"
+		c.Locals("message", successMessage)
+		return c.Status(http.StatusOK).JSON(fiber.Map{
+			"status":  "success",
+			"message": successMessage,
+			"data":    nil,
+		})
+	}
+}
+
+func DeleteStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		id := c.Params("id")
+		if err := validateUUID(id); err != nil {
+			c.Locals("message", err.Error())
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  "fail",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+
+		err := deleteStudentInfo(c.Context(), driver, id, logger)
+		if err != nil {
+			c.Locals("message", err.Error())
+			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+				"status":  "error",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+
+		successMessage := "User student info removed successfully"
+		c.Locals("message", successMessage)
+		return c.Status(http.StatusOK).JSON(fiber.Map{
+			"status":  "success",
+			"message": successMessage,
+			"data":    nil,
+		})
+	}
+}
+
+func AddUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		var req models.UserRequestCompany
+
+		if err := ValidateRequest(c, &req); err != nil {
+			c.Locals("message", err)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  "fail",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+
+		id := c.Params("id")
+		if err := validateUUID(id); err != nil {
+			c.Locals("message", err.Error())
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  "fail",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+
+		err := addUserCompany(c.Context(), driver, id, req, logger)
+		if err != nil {
+			c.Locals("message", err.Error())
+			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+				"status":  "error",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+
+		successMessage := "User profile updated successfully"
+		c.Locals("message", successMessage)
+		return c.Status(http.StatusOK).JSON(fiber.Map{
+			"status":  "success",
+			"message": successMessage,
+			"data":    nil,
+		})
+	}
+}
+
+func UpdateUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		var req models.UserCompanyUpdateRequest
+
+		if err := ValidateRequest(c, &req); err != nil {
+			c.Locals("message", err)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  "fail",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+
+		userID := c.Params("user_id")
+		companyID := c.Params("company_id")
+		if err := validateUUIDs(userID, companyID); err != nil {
+			c.Locals("message", err.Error())
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  "fail",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+
+		err := updateUserCompany(c.Context(), driver, userID, companyID, req, logger)
+		if err != nil {
+			c.Locals("message", err.Error())
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"status":  "error",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+
+		successMessage := "User company updated successfully"
+		c.Locals("message", successMessage)
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"status":  "success",
+			"message": successMessage,
+			"data":    nil,
+		})
+	}
+}
+
+func DeleteUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		userID := c.Params("user_id")
+		companyID := c.Params("company_id")
+		if err := validateUUIDs(userID, companyID); err != nil {
+			c.Locals("message", err.Error())
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  "fail",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+
+		err := deleteUserCompany(c.Context(), driver, userID, companyID, logger)
+		if err != nil {
+			c.Locals("message", err.Error())
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"status":  "error",
+				"message": err.Error(),
+				"data":    nil,
+			})
+		}
+		successMessage := "User company removed successfully"
+		c.Locals("message", successMessage)
+		return c.Status(http.StatusOK).JSON(fiber.Map{
+			"status":  "success",
+			"message": successMessage,
+			"data":    nil,
+		})
 	}
 }
 
@@ -327,7 +582,6 @@ func createUser(ctx context.Context, driver neo4j.DriverWithContext, user models
 	})
 	defer session.Close(ctx)
 
-	user.UserID = uuid.New().String()
 	// Check if username already exists
 	checkQuery := "MATCH (u:UserProfile {username: $username}) RETURN u LIMIT 1"
 	checkParams := map[string]interface{}{"username": user.Username}
@@ -468,7 +722,6 @@ func getUserFriendByID(ctx context.Context, driver neo4j.DriverWithContext, id s
 	return friends, nil
 }
 
-// fetchUserByID queries the Neo4j database for a user by ID.
 func fetchUserByID(ctx context.Context, driver neo4j.DriverWithContext, id string, logger *zap.Logger) (models.UserProfile, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{DatabaseName: "neo4j", AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
@@ -532,19 +785,30 @@ func fetchUserByFilter(ctx context.Context, driver neo4j.DriverWithContext, filt
 	})
 	defer session.Close(ctx)
 
-	query := `
-    MATCH (u:UserProfile)-[:BELONGS_TO_STUDENT_TYPE]->(st:StudentType)
-    OPTIONAL MATCH (st)<-[:HAS_STUDENT_TYPE]-(fd:Field)
-    WHERE (fd.name = $fieldName OR $fieldName IS NULL)
-    AND (st.name = $studentTypeName OR $studentTypeName IS NULL)
-    RETURN u
-  `
+	query := "MATCH "
+	params := make(map[string]interface{})
 
-	// Run the query with parameters
-	result, err := session.Run(ctx, query, map[string]interface{}{
-		"studentTypeName": filter.StudentType,
-		"fieldName":       filter.Field,
-	})
+	if filter.Field != "" && filter.StudentType != "" {
+		query += `
+      (:StudentType {name: $studentTypeName})
+      <-[:BELONGS_TO_STUDENT_TYPE]-(u:UserProfile)-[:BELONGS_TO_FIELD]->
+      (:Field {name: $fieldName})
+    `
+		params["fieldName"] = filter.Field
+		params["studentTypeName"] = filter.StudentType
+	} else if filter.Field != "" {
+		query += "(u:UserProfile)-[:BELONG_TO_FIELD]->(:Field {name: $fieldName})"
+		params["fieldName"] = filter.Field
+	} else if filter.StudentType != "" {
+		query += "(u:UserProfile)-[:BELONG_TO_STUDENT_TYPE]->(:StudentType {name: $studentTypeName})"
+		params["studentTypeName"] = filter.StudentType
+	}
+
+	query += " RETURN u"
+
+	// Execute the query
+	result, err := session.Run(ctx, query, params)
+
 	if err != nil {
 		logger.Error("Failed to run query", zap.Error(err))
 		return nil, fiber.NewError(http.StatusInternalServerError, "Error retrieving data")
@@ -628,6 +892,36 @@ func updateUserByID(ctx context.Context, driver neo4j.DriverWithContext, id stri
 	return updatedUser, nil
 }
 
+func deleteUserByID(ctx context.Context, driver neo4j.DriverWithContext, userID string, logger *zap.Logger) error {
+	// Start a write transaction
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeWrite,
+	})
+	defer session.Close(ctx)
+
+	deleteQuery := `
+		MATCH (u:UserProfile {user_id: $userID})
+		DETACH DELETE u
+	`
+
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+		_, err := tx.Run(ctx, deleteQuery, map[string]interface{}{"userID": userID})
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
+	})
+
+	if err != nil {
+		logger.Error("Failed to delete user", zap.String("userID", userID), zap.Error(err))
+		return fiber.NewError(http.StatusInternalServerError, fmt.Sprintf("Failed to delete user with user_id %s", userID))
+	}
+
+	logger.Info("User deleted successfully", zap.String("userID", userID))
+	return nil
+}
+
 func addFriend(ctx context.Context, driver neo4j.DriverWithContext, userID1 string, userID2 string, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
@@ -689,6 +983,352 @@ func unfriend(ctx context.Context, driver neo4j.DriverWithContext, userID1 strin
 	if err != nil {
 		logger.Error("Failed to retrieve result", zap.Error(err))
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve result after creating relationship")
+	}
+
+	return nil
+}
+
+func addStudentInfo(ctx context.Context, driver neo4j.DriverWithContext, id string, student_info models.StudentInfoRequest, logger *zap.Logger) error {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeWrite,
+	})
+	defer session.Close(ctx)
+
+	checkUserQuery := `
+    MATCH (u:UserProfile {user_id: $userID})
+    RETURN u LIMIT 1
+  `
+	userResult, err1 := session.Run(ctx, checkUserQuery, map[string]interface{}{
+		"userID": id,
+	})
+	if err1 != nil {
+		logger.Error("Failed to check user existence", zap.Error(err1))
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to check user existence")
+	}
+	if !userResult.Next(ctx) {
+		logger.Warn("UserProfile not found", zap.String("userID", id))
+		return fiber.NewError(fiber.StatusNotFound, "UserProfile not found")
+	}
+
+	query := `
+    MERGE (faculty:Faculty {name: $faculty})
+    MERGE (faculty)-[:HAS_DEPARTMENT]->(department:Department {name: $department})
+    MERGE (department)-[:HAS_FIELD]->(field:Field {name: $field})
+    MERGE (field)-[:HAS_STUDENT_TYPE]->(studentType:StudentType {name: $studentType})
+
+    WITH field, studentType
+    MATCH (u:UserProfile {user_id: $userID})
+    MERGE (u)-[:BELONGS_TO_FIELD]->(field)
+    MERGE (u)-[:BELONGS_TO_STUDENT_TYPE]->(studentType)
+  `
+
+	params := map[string]interface{}{
+		"userID":      id,
+		"faculty":     student_info.Faculty,
+		"department":  student_info.Department,
+		"field":       student_info.Field,
+		"studentType": student_info.StudentType,
+	}
+
+	_, err2 := session.Run(ctx, query, params)
+	if err2 != nil {
+		logger.Error("Failed to create or connect student info", zap.Error(err2))
+		return fiber.NewError(http.StatusInternalServerError, "Failed to create or connect student info")
+	}
+
+	return nil
+
+}
+
+func updateStudentInfo(ctx context.Context, driver neo4j.DriverWithContext, id string, student_info models.StudentInfoRequest, logger *zap.Logger) error {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeWrite,
+	})
+	defer session.Close(ctx)
+
+	checkUserQuery := `
+    MATCH (u:UserProfile {user_id: $userID})
+    RETURN u LIMIT 1
+  `
+	userResult, err1 := session.Run(ctx, checkUserQuery, map[string]interface{}{
+		"userID": id,
+	})
+	if err1 != nil {
+		logger.Error("Failed to check user existence", zap.Error(err1))
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to check user existence")
+	}
+	if !userResult.Next(ctx) {
+		logger.Warn("UserProfile not found", zap.String("userID", id))
+		return fiber.NewError(fiber.StatusNotFound, "UserProfile not found")
+	}
+
+	tx, err := session.BeginTransaction(ctx)
+	if err != nil {
+		logger.Error("Failed to begin transaction", zap.Error(err))
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to begin transaction")
+	}
+
+	query := `
+    MATCH (u:UserProfile {user_id: $userID})-[r: BELONGS_TO_FIELD|BELONGS_TO_STUDENT_TYPE]->()
+    DELETE r
+
+    MERGE (f:Faculty {name: $faculty})
+    MERGE (f)-[:HAS_DEPARTMENT]->(d:Department {name: $department})
+    MERGE (d)-[:HAS_FIELD]->(fld:Field {name: $field})
+    MERGE (fld)-[:HAS_STUDENT_TYPE]->(st:StudentType {name: $studentType})
+
+    MERGE (u)-[:BELONGS_TO_FIELD]->(fld)
+    MERGE (u)-[:BELONGS_TO_STUDENT_TYPE]->(st)
+  `
+
+	params := map[string]interface{}{
+		"userID":      id,
+		"faculty":     student_info.Faculty,
+		"department":  student_info.Department,
+		"field":       student_info.Field,
+		"studentType": student_info.StudentType,
+	}
+
+	_, err = tx.Run(ctx, query, params)
+	if err != nil {
+		tx.Rollback(ctx)
+		logger.Error("Failed to create or connect student info", zap.Error(err))
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create or connect student info")
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
+		logger.Error("Failed to commit transaction", zap.Error(err))
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to commit transaction")
+	}
+
+	return nil
+}
+
+func deleteStudentInfo(ctx context.Context, driver neo4j.DriverWithContext, id string, logger *zap.Logger) error {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeWrite,
+	})
+	defer session.Close(ctx)
+
+	checkUserQuery := `
+    MATCH (u:UserProfile {user_id: $userID})
+    RETURN u LIMIT 1
+  `
+	userResult, err1 := session.Run(ctx, checkUserQuery, map[string]interface{}{
+		"userID": id,
+	})
+	if err1 != nil {
+		logger.Error("Failed to check user existence", zap.Error(err1))
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to check user existence")
+	}
+	if !userResult.Next(ctx) {
+		logger.Warn("UserProfile not found", zap.String("userID", id))
+		return fiber.NewError(fiber.StatusNotFound, "UserProfile not found")
+	}
+
+	tx, err := session.BeginTransaction(ctx)
+	if err != nil {
+		logger.Error("Failed to begin transaction", zap.Error(err))
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to begin transaction")
+	}
+
+	query := `
+    MATCH (u:UserProfile {user_id: $userID})-[r: BELONGS_TO_FIELD|BELONGS_TO_STUDENT_TYPE]->()
+    DELETE r
+  `
+
+	params := map[string]interface{}{
+		"userID": id,
+	}
+
+	_, err = tx.Run(ctx, query, params)
+	if err != nil {
+		tx.Rollback(ctx)
+		logger.Error("Failed to remove student info", zap.Error(err))
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create or connect student info")
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
+		logger.Error("Failed to commit transaction", zap.Error(err))
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to commit transaction")
+	}
+
+	return nil
+}
+
+func addUserCompany(ctx context.Context, driver neo4j.DriverWithContext, id string, companies models.UserRequestCompany, logger *zap.Logger) error {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeWrite,
+	})
+	defer session.Close(ctx)
+
+	// Check if the user exists before starting the transaction
+	checkUserQuery := `
+    MATCH (u:UserProfile {user_id: $userID})
+    RETURN u LIMIT 1
+  `
+	userResult, err := session.Run(ctx, checkUserQuery, map[string]interface{}{
+		"userID": id,
+	})
+	if err != nil {
+		logger.Error("Failed to check user existence", zap.Error(err))
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to check user existence")
+	}
+	if !userResult.Next(ctx) {
+		logger.Warn("UserProfile not found", zap.String("userID", id))
+		return fiber.NewError(fiber.StatusNotFound, "UserProfile not found")
+	}
+
+	// Begin the transaction for adding or connecting companies
+	tx, err := session.BeginTransaction(ctx)
+	if err != nil {
+		logger.Error("Failed to begin transaction", zap.Error(err))
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to begin transaction")
+	}
+
+	// Query to create or connect the company
+	query := `
+    MERGE (a:Company {name: $name, address: $address})
+    ON CREATE SET a.company_id = $companyID
+    WITH a
+    MATCH (u:UserProfile {user_id: $userID})
+    MERGE (u)-[r:HAS_WORK_WITH]->(a)
+    SET r.position = $position,
+        r.created_timestamp = timestamp()
+  `
+
+	for _, company := range companies.Companies {
+		// Generate a new companyID only if the company is being created
+		params := map[string]interface{}{
+			"companyID": uuid.New().String(),
+			"userID":    id,
+			"name":      company.Company,
+			"address":   company.Address,
+			"position":  company.Position,
+		}
+		_, err = tx.Run(ctx, query, params)
+		if err != nil {
+			logger.Error("Failed to create or connect user company info", zap.Error(err))
+			_ = tx.Rollback(ctx)
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to create or connect user company info")
+		}
+	}
+
+	// Commit the transaction
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
+		logger.Error("Failed to commit transaction", zap.Error(err))
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to commit transaction")
+	}
+
+	return nil
+}
+
+func updateUserCompany(ctx context.Context, driver neo4j.DriverWithContext, userID, companyID string, company models.UserCompanyUpdateRequest, logger *zap.Logger) error {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeWrite,
+	})
+	defer session.Close(ctx)
+
+	// Check if both User and Company exist
+	checkExistenceQuery := `
+		MATCH (u:UserProfile {user_id: $userID})
+		MATCH (c:Company {company_id: $companyID})
+		RETURN u, c LIMIT 1
+	`
+	existsResult, err := session.Run(ctx, checkExistenceQuery, map[string]interface{}{
+		"userID":    userID,
+		"companyID": companyID,
+	})
+	if err != nil {
+		logger.Error("Failed to check user or company existence", zap.Error(err))
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to check user or company existence")
+	}
+	if !existsResult.Next(ctx) {
+		logger.Warn("User or Company not found", zap.String("userID", userID), zap.String("companyID", companyID))
+		return fiber.NewError(fiber.StatusNotFound, "User or Company not found")
+	}
+
+	// Update or create the relationship with position
+	_, err = session.ExecuteWrite(ctx,
+		func(tx neo4j.ManagedTransaction) (interface{}, error) {
+			updateQuery := `
+			MATCH (a:Company {company_id: $companyID})<-[r:HAS_WORK_WITH]-(u:UserProfile {user_id: $userID})
+			SET r.position = $position,
+				r.updated_timestamp = timestamp()
+		`
+			_, err := tx.Run(ctx, updateQuery, map[string]interface{}{
+				"companyID": companyID,
+				"userID":    userID,
+				"position":  company.Position,
+			})
+			if err != nil {
+				logger.Error("Failed to update user company info", zap.Error(err))
+				return nil, fiber.NewError(fiber.StatusInternalServerError, "Failed to update user company info")
+			}
+			return nil, nil
+		})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func deleteUserCompany(ctx context.Context, driver neo4j.DriverWithContext, userID, companyID string, logger *zap.Logger) error {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeWrite,
+	})
+	defer session.Close(ctx)
+
+	// Check if both User and Company exist
+	checkExistenceQuery := `
+		MATCH (u:UserProfile {user_id: $userID})
+		MATCH (c:Company {company_id: $companyID})
+		RETURN u, c LIMIT 1
+	`
+	existsResult, err := session.Run(ctx, checkExistenceQuery, map[string]interface{}{
+		"userID":    userID,
+		"companyID": companyID,
+	})
+	if err != nil {
+		logger.Error("Failed to check user or company existence", zap.Error(err))
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to check user or company existence")
+	}
+	if !existsResult.Next(ctx) {
+		logger.Warn("User or Company not found", zap.String("userID", userID), zap.String("companyID", companyID))
+		return fiber.NewError(fiber.StatusNotFound, "User or Company not found")
+	}
+
+	// Update or create the relationship with position
+	_, err = session.ExecuteWrite(ctx,
+		func(tx neo4j.ManagedTransaction) (interface{}, error) {
+			updateQuery := `
+			MATCH (a:Company {company_id: $companyID})<-[r:HAS_WORK_WITH]-(u:UserProfile {user_id: $userID})
+      DELETE r
+		`
+			_, err := tx.Run(ctx, updateQuery, map[string]interface{}{
+				"companyID": companyID,
+				"userID":    userID,
+			})
+			if err != nil {
+				logger.Error("Failed to removed user company info", zap.Error(err))
+				return nil, fiber.NewError(fiber.StatusInternalServerError, "Failed to removed user company info")
+			}
+			return nil, nil
+		})
+
+	if err != nil {
+		return err
 	}
 
 	return nil

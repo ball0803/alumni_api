@@ -27,6 +27,21 @@ type UserFriendRequest struct {
 }
 
 type UserRequestFilter struct {
-	StudentType string `json:"student_type,omitempty" mapstructure:"student_type" validate:"omitempty"`
+	StudentType string `json:"studentType,omitempty" mapstructure:"studentType" validate:"omitempty"`
 	Field       string `json:"field,omitempty" mapstructure:"field" validate:"omitempty"`
+}
+
+type StudentInfoRequest struct {
+	Faculty     string `json:"faculty,omitempty" mapstructure:"faculty" validate:"required"`
+	Department  string `json:"department,omitempty" mapstructure:"department" validate:"required"`
+	Field       string `json:"field,omitempty" mapstructure:"field" validate:"required"`
+	StudentType string `json:"studentType,omitempty" mapstructure:"studentType" validate:"required"`
+}
+
+type UserRequestCompany struct {
+	Companies []Company `json:"companies" validate:"required"`
+}
+
+type UserCompanyUpdateRequest struct {
+	Position string `json:"position,omitempty" mapstructure:"position" validate:"required,max=100"`
 }
