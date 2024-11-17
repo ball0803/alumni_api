@@ -13,7 +13,7 @@ type UserProfile struct {
 	FirstNameEng   string      `json:"first_name_eng,omitempty" mapstructure:"first_name_eng" validate:"omitempty,min=2,max=50"`
 	LastNameEng    string      `json:"last_name_eng,omitempty" mapstructure:"last_name_eng" validate:"omitempty,min=2,max=50"`
 	Gender         string      `json:"gender,omitempty" mapstructure:"gender" validate:"oneof=male female other"`
-	DOB            time.Time   `json:"dob,omitempty" mapstructure:"dob" validate:"required"`
+	DOB            time.Time   `json:"DOB,omitempty" mapstructure:"DOB" validate:"required"`
 	ProfilePicture string      `json:"profile_picture,omitempty" mapstructure:"profile_picture" validate:"omitempty,url"`
 	Role           string      `json:"role,omitempty" mapstructure:"role" validate:"required,oneof=student alumnus staff"`
 	StudentInfo    StudentInfo `json:"student_info,omitempty" mapstructure:"student_info,squash" validate:"required"`

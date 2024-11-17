@@ -16,565 +16,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	errIDRequired      = "ID is required"
-	errInvalidIDFormat = "Invalid ID format"
-	errUserNotFound    = "No user found with that ID"
-	errRetrievalFailed = "Failed to retrieve user from Neo4j"
-)
-
-// GetUserByID handles the request to get a user by ID from the Neo4j database.
-func GetUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		id := c.Params("id")
-		if err := validateUserID(id); err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"status":  "fail",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		user, err := fetchUserByID(c.Context(), driver, id, logger)
-		if err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
-				"status":  "error",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		successMessage := "User retrieved successfully"
-		c.Locals("message", successMessage)
-		return c.Status(http.StatusOK).JSON(fiber.Map{
-			"status":  "success",
-			"message": successMessage,
-			"data":    user,
-		})
-	}
-}
-
-func FindUserByFilter(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		var req models.UserRequestFilter
-
-		// Validate the request data
-		if err := ValidateQuery(c, &req); err != nil {
-			logger.Warn("Validation failed", zap.Error(err))
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"status":  "fail",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		// Fetch users with the given filter
-		users, err := fetchUserByFilter(c.Context(), driver, req, logger)
-		if err != nil {
-			logger.Error("Failed to fetch users", zap.Error(err))
-			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
-				"status":  "error",
-				"message": "Failed to retrieve users",
-				"data":    nil,
-			})
-		}
-
-		// Successful response
-		successMessage := "User(s) retrieved successfully"
-		logger.Info(successMessage)
-		return c.Status(http.StatusOK).JSON(fiber.Map{
-			"status":  "success",
-			"message": successMessage,
-			"data":    users,
-		})
-	}
-}
-
-// UpdateUserProfile handles updating a user's profile in the Neo4j database.
-func UpdateUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		var req models.UserProfile
-
-		if err := ValidateRequest(c, &req); err != nil {
-			c.Locals("message", err)
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"status":  "fail",
-				"message": err,
-				"data":    nil,
-			})
-		}
-
-		id := c.Params("id")
-
-		if err := validateUserID(id); err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"status":  "fail",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		// Perform the update in the Neo4j database
-		user, err := updateUserByID(c.Context(), driver, id, req, logger)
-		if err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
-				"status":  "error",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		// Response with success
-		successMessage := "User profile updated successfully"
-		c.Locals("message", successMessage)
-		return c.Status(http.StatusOK).JSON(fiber.Map{
-			"status":  "success",
-			"message": successMessage,
-			"data":    user,
-		})
-	}
-}
-
-func DeleteUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		id := c.Params("id")
-		if err := validateUUID(id); err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"status":  "fail",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		err := deleteUserByID(c.Context(), driver, id, logger)
-		if err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
-				"status":  "error",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		successMessage := "User removed successfully"
-		c.Locals("message", successMessage)
-		return c.Status(http.StatusOK).JSON(fiber.Map{
-			"status":  "success",
-			"message": successMessage,
-			"data":    nil,
-		})
-	}
-}
-
-func GetUserFriendByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		id := c.Params("id")
-		if err := validateUserID(id); err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"status":  "fail",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		user, err := getUserFriendByID(c.Context(), driver, id, logger)
-		if err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
-				"status":  "error",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		if len(user) == 0 {
-			c.Locals("message", errUserNotFound)
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-				"status":  "fail",
-				"message": errUserNotFound,
-				"data":    nil,
-			})
-		}
-
-		successMessage := "User retrieved successfully"
-		c.Locals("message", successMessage)
-		return c.Status(http.StatusOK).JSON(fiber.Map{
-			"status":  "success",
-			"message": successMessage,
-			"data":    user,
-		})
-	}
-}
-
-func CreateUser(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		var req models.CreateUserRequest
-		req.UserID = uuid.New().String()
-
-		if err := ValidateRequest(c, &req); err != nil {
-			c.Locals("message", err)
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"status":  "fail",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		data, err := createUser(c.Context(), driver, req, logger)
-		if err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
-				"status":  "error",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		successMessage := "User created successfully"
-		c.Locals("message", successMessage)
-		return c.Status(http.StatusOK).JSON(fiber.Map{
-			"status":  "success",
-			"message": successMessage,
-			"data":    data,
-		})
-	}
-}
-
-func AddFriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		var req models.UserFriendRequest
-		userID1 := c.Params("id")
-
-		if err := validateUserID(userID1); err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"status":  "fail",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		if err := ValidateRequest(c, &req); err != nil {
-			c.Locals("message", err)
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"status":  "fail",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		c.BodyParser(req)
-		userID2 := req.UserID
-		err := addFriend(c.Context(), driver, userID1, userID2, logger)
-		if err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
-				"status":  "error",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		successMessage := fmt.Sprintf("Successfully add user %s to user %s", userID1, userID2)
-		c.Locals("message", successMessage)
-		return c.Status(http.StatusOK).JSON(fiber.Map{
-			"status":  "success",
-			"message": successMessage,
-			"data":    nil,
-		})
-	}
-}
-
-func Unfriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		var req models.UserFriendRequest
-		userID1 := c.Params("id")
-
-		if err := validateUserID(userID1); err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"status":  "fail",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		if err := ValidateRequest(c, &req); err != nil {
-			c.Locals("message", err)
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"status":  "fail",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		c.BodyParser(req)
-		userID2 := req.UserID
-		err := unfriend(c.Context(), driver, userID1, userID2, logger)
-		if err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
-				"status":  "error",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		successMessage := fmt.Sprintf("Successfully remove user %s from user %s", userID1, userID2)
-		c.Locals("message", successMessage)
-		return c.Status(http.StatusOK).JSON(fiber.Map{
-			"status":  "success",
-			"message": successMessage,
-			"data":    nil,
-		})
-	}
-}
-
-func AddStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		var req models.StudentInfoRequest
-
-		if err := ValidateRequest(c, &req); err != nil {
-			c.Locals("message", err)
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"status":  "fail",
-				"message": err,
-				"data":    nil,
-			})
-		}
-
-		id := c.Params("id")
-		if err := validateUUID(id); err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"status":  "fail",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		err := addStudentInfo(c.Context(), driver, id, req, logger)
-		if err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
-				"status":  "error",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		successMessage := "User profile updated successfully"
-		c.Locals("message", successMessage)
-		return c.Status(http.StatusOK).JSON(fiber.Map{
-			"status":  "success",
-			"message": successMessage,
-			"data":    nil,
-		})
-	}
-}
-
-func UpdateStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		var req models.StudentInfoRequest
-
-		if err := ValidateRequest(c, &req); err != nil {
-			c.Locals("message", err)
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"status":  "fail",
-				"message": err,
-				"data":    nil,
-			})
-		}
-
-		id := c.Params("id")
-		if err := validateUUID(id); err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"status":  "fail",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		err := updateStudentInfo(c.Context(), driver, id, req, logger)
-		if err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
-				"status":  "error",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		successMessage := "User student info updated successfully"
-		c.Locals("message", successMessage)
-		return c.Status(http.StatusOK).JSON(fiber.Map{
-			"status":  "success",
-			"message": successMessage,
-			"data":    nil,
-		})
-	}
-}
-
-func DeleteStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		id := c.Params("id")
-		if err := validateUUID(id); err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"status":  "fail",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		err := deleteStudentInfo(c.Context(), driver, id, logger)
-		if err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
-				"status":  "error",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		successMessage := "User student info removed successfully"
-		c.Locals("message", successMessage)
-		return c.Status(http.StatusOK).JSON(fiber.Map{
-			"status":  "success",
-			"message": successMessage,
-			"data":    nil,
-		})
-	}
-}
-
-func AddUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		var req models.UserRequestCompany
-
-		if err := ValidateRequest(c, &req); err != nil {
-			c.Locals("message", err)
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"status":  "fail",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		id := c.Params("id")
-		if err := validateUUID(id); err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"status":  "fail",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		err := addUserCompany(c.Context(), driver, id, req, logger)
-		if err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
-				"status":  "error",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		successMessage := "User profile updated successfully"
-		c.Locals("message", successMessage)
-		return c.Status(http.StatusOK).JSON(fiber.Map{
-			"status":  "success",
-			"message": successMessage,
-			"data":    nil,
-		})
-	}
-}
-
-func UpdateUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		var req models.UserCompanyUpdateRequest
-
-		if err := ValidateRequest(c, &req); err != nil {
-			c.Locals("message", err)
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"status":  "fail",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		userID := c.Params("user_id")
-		companyID := c.Params("company_id")
-		if err := validateUUIDs(userID, companyID); err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"status":  "fail",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		err := updateUserCompany(c.Context(), driver, userID, companyID, req, logger)
-		if err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"status":  "error",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		successMessage := "User company updated successfully"
-		c.Locals("message", successMessage)
-		return c.Status(fiber.StatusOK).JSON(fiber.Map{
-			"status":  "success",
-			"message": successMessage,
-			"data":    nil,
-		})
-	}
-}
-
-func DeleteUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		userID := c.Params("user_id")
-		companyID := c.Params("company_id")
-		if err := validateUUIDs(userID, companyID); err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"status":  "fail",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-
-		err := deleteUserCompany(c.Context(), driver, userID, companyID, logger)
-		if err != nil {
-			c.Locals("message", err.Error())
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"status":  "error",
-				"message": err.Error(),
-				"data":    nil,
-			})
-		}
-		successMessage := "User company removed successfully"
-		c.Locals("message", successMessage)
-		return c.Status(http.StatusOK).JSON(fiber.Map{
-			"status":  "success",
-			"message": successMessage,
-			"data":    nil,
-		})
-	}
-}
-
-// ------------------------------- main -----------------------------------------------
-
 func createUser(ctx context.Context, driver neo4j.DriverWithContext, user models.CreateUserRequest, logger *zap.Logger) (map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
@@ -582,7 +23,9 @@ func createUser(ctx context.Context, driver neo4j.DriverWithContext, user models
 	})
 	defer session.Close(ctx)
 
-	// Check if username already exists
+	userID := uuid.New().String()
+
+	// Check for username uniqueness
 	checkQuery := "MATCH (u:UserProfile {username: $username}) RETURN u LIMIT 1"
 	checkParams := map[string]interface{}{"username": user.Username}
 	checkResult, err := session.Run(ctx, checkQuery, checkParams)
@@ -590,15 +33,19 @@ func createUser(ctx context.Context, driver neo4j.DriverWithContext, user models
 		logger.Error("Failed to check username uniqueness", zap.Error(err))
 		return nil, fiber.NewError(http.StatusInternalServerError, "Error checking username uniqueness")
 	}
-	if checkResult.Next(ctx) { // If a record exists
+	if checkResult.Next(ctx) {
 		return nil, fiber.NewError(http.StatusConflict, "Username already exists")
 	}
 
-	// Proceed to create the user if username is unique
-	query := "CREATE (u:UserProfile {"
-	params := map[string]interface{}{}
+	user.UserID = userID
 
-	// Use reflection to iterate over struct fields
+	// Prepare the query and parameters
+	query := "CREATE (u:UserProfile {"
+	var params = map[string]interface{}{}
+	var queryBuilder strings.Builder
+	queryBuilder.WriteString(query)
+
+	// Iterate over struct fields using reflection
 	v := reflect.ValueOf(user)
 	t := v.Type()
 
@@ -615,42 +62,35 @@ func createUser(ctx context.Context, driver neo4j.DriverWithContext, user models
 			continue
 		}
 
+		// Handling time fields with special formatting
 		if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
 			formattedDate := utils.FormatDate(fieldValue.Interface().(time.Time))
 			if formattedDate != nil {
-				query += fmt.Sprintf("%s: $%s, ", fieldName, fieldName)
+				queryBuilder.WriteString(fmt.Sprintf("%s: $%s, ", fieldName, fieldName))
 				params[fieldName] = formattedDate
 			}
 		} else if fieldValue.Kind() == reflect.Struct || fieldValue.Kind() == reflect.Map {
 			if !utils.IsEmpty(fieldValue.Interface()) {
-				query += fmt.Sprintf("%s: $%s, ", fieldName, fieldName)
+				queryBuilder.WriteString(fmt.Sprintf("%s: $%s, ", fieldName, fieldName))
 				params[fieldName] = fieldValue.Interface()
 			}
 		} else {
-			query += fmt.Sprintf("%s: $%s, ", fieldName, fieldName)
+			queryBuilder.WriteString(fmt.Sprintf("%s: $%s, ", fieldName, fieldName))
 			params[fieldName] = fieldValue.Interface()
 		}
 	}
 
-	query = strings.TrimSuffix(query, ", ") + "}) RETURN u.user_id AS user_id"
+	queryBuilder.WriteString("}) RETURN u.user_id AS user_id")
+	query = queryBuilder.String()
 
-	result, err := session.Run(ctx, query, params)
+	// Run the query
+	_, err = session.Run(ctx, query, params)
 	if err != nil {
 		logger.Error("Failed to create user", zap.Error(err))
 		return nil, fiber.NewError(http.StatusInternalServerError, "Error creating user")
 	}
 
-	record, err := result.Single(ctx)
-	if err != nil {
-		logger.Error("Failed to retrieve created user ID", zap.Error(err))
-		return nil, fiber.NewError(http.StatusInternalServerError, "Error retrieving created user")
-	}
-
-	userID, ok := record.Get("user_id")
-	if !ok || userID == nil {
-		logger.Error("user_id not found in result")
-		return nil, fiber.NewError(http.StatusInternalServerError, "User ID not returned after creation")
-	}
+	// Prepare the result map
 	ret := map[string]interface{}{
 		"user_id": userID,
 	}
@@ -684,22 +124,18 @@ func getUserFriendByID(ctx context.Context, driver neo4j.DriverWithContext, id s
 		return nil, fiber.NewError(http.StatusInternalServerError, errRetrievalFailed)
 	}
 
-	// Collect the result into a single record
 	records, err := result.Single(ctx)
 	if err != nil {
 		logger.Error(errRetrievalFailed, zap.Error(err))
 		return nil, fiber.NewError(http.StatusInternalServerError, errRetrievalFailed)
 	}
 
-	// Get the "friends" field from the record
 	var friends []map[string]interface{}
 	friendRecords, ok := records.Get("friends")
 	if !ok {
 		logger.Warn("No friends found for user")
 		return nil, fiber.NewError(fiber.StatusNotFound, "No friends found for this user")
 	}
-
-	// Ensure the friendRecords is a slice of interfaces
 	friendList, ok := friendRecords.([]interface{})
 	if !ok {
 		logger.Error("Failed to cast friends data to []interface{}")
@@ -708,14 +144,11 @@ func getUserFriendByID(ctx context.Context, driver neo4j.DriverWithContext, id s
 
 	for _, friendData := range friendList {
 		friendMap := friendData.(map[string]interface{})
-
-		// Remove empty maps or zero-value fields
 		for key, value := range friendMap {
 			if utils.IsEmpty(value) {
 				delete(friendMap, key)
 			}
 		}
-
 		friends = append(friends, friendMap)
 	}
 
@@ -728,7 +161,7 @@ func fetchUserByID(ctx context.Context, driver neo4j.DriverWithContext, id strin
 
 	query := `
 		MATCH (u:UserProfile {user_id: $id})-[r:HAS_WORK_WITH]->(c:Company)
-		RETURN u, collect({company: c, job: r.job}) AS companies
+		RETURN u, collect({company: c, position: r.position}) AS companies
 	`
 
 	result, err := session.Run(ctx, query, map[string]interface{}{"id": id})
@@ -750,9 +183,16 @@ func fetchUserByID(ctx context.Context, driver neo4j.DriverWithContext, id strin
 	}
 	props := userNode.(neo4j.Node).Props
 	var user models.UserProfile
+
+	dateFields := []string{"dob"}
+	if err := utils.ConvertMapDateFields(props, dateFields, "2006-01-02"); err != nil {
+		logger.Error("Error converting date fields", zap.Error(err))
+		return models.UserProfile{}, fiber.NewError(http.StatusInternalServerError, "Failed to parse date fields")
+	}
+
 	if err := utils.MapToStruct(props, &user); err != nil {
 		logger.Error("Error decoding user properties", zap.Error(err))
-		return models.UserProfile{}, fiber.NewError(http.StatusInternalServerError, errUserNotFound)
+		return models.UserProfile{}, fiber.NewError(http.StatusInternalServerError, err.Error())
 	}
 
 	companyRecords, _ := record.Get("companies")
@@ -762,7 +202,7 @@ func fetchUserByID(ctx context.Context, driver neo4j.DriverWithContext, id strin
 	for i, companyData := range companyList {
 		compMap := companyData.(map[string]interface{})
 		companyNode := compMap["company"].(neo4j.Node).Props
-		jobTitle := compMap["job"].(string)
+		jobTitle := compMap["position"].(string)
 
 		// Map to Company struct and add the job field
 		var company models.Company
@@ -852,44 +292,52 @@ func updateUserByID(ctx context.Context, driver neo4j.DriverWithContext, id stri
 	})
 	defer session.Close(ctx)
 
-	query := `
-		MATCH (u:UserProfile {user_id: $id})
-		SET u += $properties
-		RETURN u
-  `
-
 	properties, err := utils.StructToMap(updatedData)
 	if err != nil {
 		logger.Error("Failed to convert struct to map", zap.Error(err))
 		return models.UserProfile{}, fiber.NewError(http.StatusInternalServerError, "Internal server error")
 	}
-	fmt.Println(properties)
 
-	result, err := session.Run(ctx, query, map[string]interface{}{
-		"id":         id,
-		"properties": properties,
+	// Execute the transaction with the write operation
+	updatedUser, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+		query := `
+			MATCH (u:UserProfile {user_id: $id})
+			SET u += $properties
+			RETURN u
+		`
+
+		result, err := tx.Run(ctx, query, map[string]interface{}{
+			"id":         id,
+			"properties": properties,
+		})
+
+		if err != nil {
+			logger.Error("Failed to update user profile", zap.Error(err))
+			return nil, fiber.NewError(http.StatusInternalServerError, "Failed to update user profile")
+		}
+
+		record, err := result.Single(ctx)
+		if err != nil {
+			logger.Warn("No user found with that ID")
+			return nil, fiber.NewError(fiber.StatusNotFound, "No user found with that ID")
+		}
+
+		userNode, _ := record.Get("u")
+		props := userNode.(neo4j.Node).Props
+		var updatedUser models.UserProfile
+		if err := utils.MapToStruct(props, &updatedUser); err != nil {
+			logger.Error("Error decoding updated user properties", zap.Error(err))
+			return nil, fiber.NewError(http.StatusInternalServerError, "Failed to decode updated user profile")
+		}
+
+		return updatedUser, nil
 	})
 
 	if err != nil {
-		logger.Error("Failed to update user profile", zap.Error(err))
-		return models.UserProfile{}, fiber.NewError(http.StatusInternalServerError, "Failed to update user profile")
+		return models.UserProfile{}, err
 	}
 
-	record, err := result.Single(ctx)
-	if err != nil {
-		logger.Warn("No user found with that ID")
-		return models.UserProfile{}, fiber.NewError(fiber.StatusNotFound, "No user found with that ID")
-	}
-
-	userNode, _ := record.Get("u")
-	props := userNode.(neo4j.Node).Props
-	var updatedUser models.UserProfile
-	if err := utils.MapToStruct(props, &updatedUser); err != nil {
-		logger.Error("Error decoding updated user properties", zap.Error(err))
-		return models.UserProfile{}, fiber.NewError(http.StatusInternalServerError, "Failed to decode updated user profile")
-	}
-
-	return updatedUser, nil
+	return updatedUser.(models.UserProfile), nil
 }
 
 func deleteUserByID(ctx context.Context, driver neo4j.DriverWithContext, userID string, logger *zap.Logger) error {
@@ -900,13 +348,14 @@ func deleteUserByID(ctx context.Context, driver neo4j.DriverWithContext, userID 
 	})
 	defer session.Close(ctx)
 
-	deleteQuery := `
-		MATCH (u:UserProfile {user_id: $userID})
-		DETACH DELETE u
-	`
-
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
-		_, err := tx.Run(ctx, deleteQuery, map[string]interface{}{"userID": userID})
+		deleteQuery := `
+      MATCH (u:UserProfile {user_id: $userID})
+      DETACH DELETE u
+    `
+		_, err := tx.Run(ctx, deleteQuery, map[string]interface{}{
+			"userID": userID,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -929,25 +378,37 @@ func addFriend(ctx context.Context, driver neo4j.DriverWithContext, userID1 stri
 	})
 	defer session.Close(ctx)
 
-	query := `
-    MATCH (u1:UserProfile {user_id: $userID1}), (u2:UserProfile {user_id: $userID2})
-    MERGE (u1)-[r:FRIEND]->(u2)
-    ON CREATE SET r.created_timestamp = timestamp()
-    MERGE (u2)-[r2:FRIEND]->(u1)
-    ON CREATE SET r2.created_timestamp = timestamp()
-    RETURN u1, u2
-  `
+	_, err := session.ExecuteWrite(ctx,
+		func(tx neo4j.ManagedTransaction) (interface{}, error) {
+			query := `
+        MATCH (u1:UserProfile {user_id: $userID1}), (u2:UserProfile {user_id: $userID2})
+        MERGE (u1)-[r:FRIEND]->(u2)
+        ON CREATE SET r.created_timestamp = timestamp()
+        MERGE (u2)-[r2:FRIEND]->(u1)
+        ON CREATE SET r2.created_timestamp = timestamp()
+        RETURN u1, u2
+      `
 
-	result, err := session.Run(ctx, query, map[string]interface{}{"userID1": userID1, "userID2": userID2})
-	if err != nil {
-		logger.Error("Failed to add friend", zap.Error(err))
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to add friend")
-	}
+			result, err := tx.Run(ctx, query, map[string]interface{}{
+				"userID1": userID1,
+				"userID2": userID2,
+			})
 
-	_, err = result.Single(ctx)
+			if err != nil {
+				logger.Error("Failed to add friend", zap.Error(err))
+				return nil, fiber.NewError(fiber.StatusInternalServerError, "Failed to add friend")
+			}
+
+			_, err = result.Single(ctx)
+			if err != nil {
+				logger.Error("Failed to retrieve result", zap.Error(err))
+				return nil, fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve result after creating relationship")
+			}
+			return nil, nil
+		})
+
 	if err != nil {
-		logger.Error("Failed to retrieve result", zap.Error(err))
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve result after creating relationship")
+		return err
 	}
 
 	return nil
@@ -964,27 +425,30 @@ func unfriend(ctx context.Context, driver neo4j.DriverWithContext, userID1 strin
 		return fiber.NewError(fiber.StatusBadRequest, "Cannot unfriend oneself")
 	}
 
-	query := `
-    MATCH (u1:UserProfile {user_id: $userID1})-[r1:FRIEND]->(u2:UserProfile {user_id: $userID2})
-    DELETE r1
-    WITH u1, u2
-    MATCH (u2)-[r2:FRIEND]->(u1)
-    DELETE r2
-    RETURN u1, u2
-  `
+	_, err := session.ExecuteWrite(ctx,
+		func(tx neo4j.ManagedTransaction) (interface{}, error) {
+			query := `
+      MATCH (u1:UserProfile {user_id: $userID1})-[r1:FRIEND]->(u2:UserProfile {user_id: $userID2})
+      DELETE r1
+      WITH u1, u2
+      MATCH (u2)-[r2:FRIEND]->(u1)
+      DELETE r2
+      RETURN u1, u2
+    `
+			_, err := tx.Run(ctx, query, map[string]interface{}{
+				"userID1": userID1,
+				"userID2": userID2,
+			})
+			if err != nil {
+				logger.Error("Failed to add friend", zap.Error(err))
+				return nil, fiber.NewError(fiber.StatusInternalServerError, "Failed to add friend")
+			}
+			return nil, nil
+		})
 
-	result, err := session.Run(ctx, query, map[string]interface{}{"userID1": userID1, "userID2": userID2})
 	if err != nil {
-		logger.Error("Failed to add friend", zap.Error(err))
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to add friend")
+		return err
 	}
-
-	_, err = result.Single(ctx)
-	if err != nil {
-		logger.Error("Failed to retrieve result", zap.Error(err))
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve result after creating relationship")
-	}
-
 	return nil
 }
 

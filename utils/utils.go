@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"github.com/mitchellh/mapstructure"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j/dbtype"
@@ -124,4 +125,17 @@ func FormatDate(value time.Time) interface{} {
 		return nil
 	}
 	return value.Format("2006-01-02")
+}
+
+func ConvertMapDateFields(inputMap map[string]interface{}, dateFields []string, dateFormat string) error {
+	for _, field := range dateFields {
+		if strVal, ok := inputMap[field].(string); ok {
+			parsedTime, err := time.Parse(dateFormat, strVal)
+			if err != nil {
+				return errors.New("failed to parse date for field " + field + ": " + err.Error())
+			}
+			inputMap[field] = parsedTime
+		}
+	}
+	return nil
 }
