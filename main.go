@@ -12,7 +12,10 @@ import (
 )
 
 func main() {
-	logger := logger.NewLogger()
+	logger, err := logger.NewLogger()
+	if err != nil {
+		panic(err)
+	}
 	defer logger.Sync()
 
 	ctx := context.Background()
