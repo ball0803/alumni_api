@@ -1,11 +1,11 @@
 package handlers
 
 import (
+	"alumni_api/models"
 	"fmt"
-	"reflect"
-
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
+	"reflect"
 )
 
 var validate = validator.New()
@@ -131,6 +131,20 @@ func ValidateQuery(c *fiber.Ctx, req interface{}) error {
 			errorMessages = append(errorMessages, e.Error())
 		}
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"errors": errorMessages})
+	}
+
+	return nil
+}
+
+func ValidateSameUser(c *fiber.Ctx, user_id string) error {
+
+	claims, ok := c.Locals("claims").(*models.Claims)
+	if !ok {
+		return fiber.NewError(fiber.StatusUnauthorized, "Unauthorized")
+	}
+
+	if claims.UserID != user_id {
+		return fiber.NewError(fiber.StatusForbidden, "You do not have permission to this profile")
 	}
 
 	return nil

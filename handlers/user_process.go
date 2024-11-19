@@ -138,19 +138,41 @@ func AddFriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler
 		var req models.UserFriendRequest
 		userID1 := c.Params("id")
 
-		if err := validateUserID(userID1); err != nil {
-			return HandleFail(c, fiber.StatusBadRequest, err.Error(), logger, nil)
+		if err := validateUUID(userID1); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		exists, err := userExists(c.Context(), driver, userID1, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", userID1), logger, nil)
+		}
+
+		if err := ValidateSameUser(c, userID1); err != nil {
+			return HandleFailWithStatus(c, err, logger)
 		}
 
 		if err := ValidateRequest(c, &req); err != nil {
-			return HandleFail(c, fiber.StatusBadRequest, err.Error(), logger, nil)
+			return HandleFailWithStatus(c, err, logger)
 		}
 
-		c.BodyParser(req)
 		userID2 := req.UserID
-		err := addFriend(c.Context(), driver, userID1, userID2, logger)
+
+		exists, err = userExists(c.Context(), driver, userID2, logger)
 		if err != nil {
-			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", userID2), logger, nil)
+		}
+
+		err = addFriend(c.Context(), driver, userID1, userID2, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
 		}
 
 		successMessage := fmt.Sprintf("Successfully add user %s to user %s", userID1, userID2)
@@ -163,18 +185,41 @@ func Unfriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler 
 		var req models.UserFriendRequest
 		userID1 := c.Params("id")
 
-		if err := validateUserID(userID1); err != nil {
-			return HandleFail(c, fiber.StatusBadRequest, err.Error(), logger, nil)
+		if err := validateUUID(userID1); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		exists, err := userExists(c.Context(), driver, userID1, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", userID1), logger, nil)
+		}
+
+		if err := ValidateSameUser(c, userID1); err != nil {
+			return HandleFailWithStatus(c, err, logger)
 		}
 
 		if err := ValidateRequest(c, &req); err != nil {
-			return HandleFail(c, fiber.StatusBadRequest, err.Error(), logger, nil)
+			return HandleFailWithStatus(c, err, logger)
 		}
 
 		userID2 := req.UserID
-		err := unfriend(c.Context(), driver, userID1, userID2, logger)
+
+		exists, err = userExists(c.Context(), driver, userID2, logger)
 		if err != nil {
-			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", userID2), logger, nil)
+		}
+
+		err = unfriend(c.Context(), driver, userID1, userID2, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
 		}
 
 		successMessage := fmt.Sprintf("Successfully remove user %s from user %s", userID1, userID2)

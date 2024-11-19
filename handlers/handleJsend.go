@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
 )
@@ -44,4 +45,22 @@ func HandleFail(c *fiber.Ctx, statusCode int, message string, logger *zap.Logger
 		"message": message,
 		"data":    nil,
 	})
+}
+
+func HandleFailWithStatus(c *fiber.Ctx, err error, logger *zap.Logger) error {
+	var fiberErr *fiber.Error
+	if errors.As(err, &fiberErr) {
+		return HandleFail(c, fiberErr.Code, fiberErr.Message, logger, nil)
+	}
+
+	return HandleFail(c, fiber.StatusBadRequest, err.Error(), logger, nil)
+}
+
+func HandleErrorWithStatus(c *fiber.Ctx, err error, logger *zap.Logger) error {
+	var fiberErr *fiber.Error
+	if errors.As(err, &fiberErr) {
+		return HandleError(c, fiberErr.Code, fiberErr.Message, logger, nil)
+	}
+
+	return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
 }

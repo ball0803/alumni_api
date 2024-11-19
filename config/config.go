@@ -29,14 +29,14 @@ func LoadConfig() Config {
 	}
 
 	return Config{
-		ServerPort:    getEnv("SERVER_PORT", "3000"),
-		Neo4jURI:      getEnv("NEO4J_URI", "bolt://localhost:7687"),
-		Neo4jUsername: getEnv("NEO4J_USERNAME", "neo4j"),
-		Neo4jPassword: getEnv("NEO4J_PASSWORD", "password"),
+		ServerPort:    GetEnv("SERVER_PORT", "3000"),
+		Neo4jURI:      GetEnv("NEO4J_URI", "bolt://localhost:7687"),
+		Neo4jUsername: GetEnv("NEO4J_USERNAME", "neo4j"),
+		Neo4jPassword: GetEnv("NEO4J_PASSWORD", "password"),
 	}
 }
 
-func getEnv(key, defaultValue string) string {
+func GetEnv(key, defaultValue string) string {
 	if value, exists := os.LookupEnv(key); exists {
 		return value
 	}
@@ -44,7 +44,7 @@ func getEnv(key, defaultValue string) string {
 }
 
 func getEnvAsInt(key string, defaultValue int) int {
-	valueStr := getEnv(key, "")
+	valueStr := GetEnv(key, "")
 	if value, err := strconv.Atoi(valueStr); err == nil {
 		return value
 	}
@@ -52,7 +52,7 @@ func getEnvAsInt(key string, defaultValue int) int {
 }
 
 func getEnvAsFloat(key string, defaultValue float64) float64 {
-	valueStr := getEnv(key, "")
+	valueStr := GetEnv(key, "")
 	if value, err := strconv.ParseFloat(valueStr, 64); err == nil {
 		return value
 	}

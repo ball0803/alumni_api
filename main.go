@@ -26,9 +26,15 @@ func main() {
 
 	// Set up Fiber app
 	app := fiber.New()
+	api := app.Group("/v1")
+	api.Get("/", func(c *fiber.Ctx) error {
+		return c.SendString("Hello, World!")
+	})
 	app.Use(middlewares.RequestLogger(logger))
 
-	routes.SetupRoutes(app, driver, logger)
+	routes.UserRoutes(api, driver, logger)
+
+	routes.AuthRoutes(api, driver, logger)
 
 	// Start the server
 	if err := app.Listen(":3000"); err != nil {
