@@ -20,13 +20,23 @@ const (
 func GetUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		id := c.Params("id")
+
 		if err := validateUUID(id); err != nil {
-			return HandleFail(c, fiber.StatusBadRequest, err.Error(), logger, nil)
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		exists, err := userExists(c.Context(), driver, id, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
 		}
 
 		user, err := fetchUserByID(c.Context(), driver, id, logger)
 		if err != nil {
-			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
+			return HandleErrorWithStatus(c, err, logger)
 		}
 
 		successMessage := "User retrieved successfully"
@@ -39,12 +49,12 @@ func FindUserByFilter(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.
 		var req models.UserRequestFilter
 
 		if err := ValidateQuery(c, &req); err != nil {
-			return HandleFail(c, fiber.StatusBadRequest, "Validation failed", logger, err)
+			return HandleFailWithStatus(c, err, logger)
 		}
 
 		users, err := fetchUserByFilter(c.Context(), driver, req, logger)
 		if err != nil {
-			return HandleError(c, fiber.StatusInternalServerError, "Failed to fetch users", logger, nil)
+			return HandleErrorWithStatus(c, err, logger)
 		}
 
 		successMessage := "User(s) retrieved successfully"
@@ -57,13 +67,27 @@ func UpdateUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 	return func(c *fiber.Ctx) error {
 		var req models.UserProfile
 
-		if err := ValidateRequest(c, &req); err != nil {
-			return HandleFail(c, fiber.StatusBadRequest, "Validation failed", logger, err)
+		id := c.Params("id")
+
+		if err := validateUUID(id); err != nil {
+			return HandleErrorWithStatus(c, err, logger)
 		}
 
-		id := c.Params("id")
-		if err := validateUserID(id); err != nil {
-			return HandleFail(c, fiber.StatusBadRequest, "Validation ID failed", logger, err)
+		if err := ValidateRequest(c, &req); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		exists, err := userExists(c.Context(), driver, id, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
+		}
+
+		if err := ValidateSameUser(c, id); err != nil {
+			return HandleFailWithStatus(c, err, logger)
 		}
 
 		user, err := updateUserByID(c.Context(), driver, id, req, logger)
@@ -79,13 +103,27 @@ func UpdateUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 func DeleteUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		id := c.Params("id")
+
 		if err := validateUUID(id); err != nil {
-			return HandleFail(c, fiber.StatusBadRequest, "Validation ID failed", logger, err)
+			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err := deleteUserByID(c.Context(), driver, id, logger)
+		exists, err := userExists(c.Context(), driver, id, logger)
 		if err != nil {
-			return HandleError(c, fiber.StatusInternalServerError, "Failed to Delete users", logger, err)
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
+		}
+
+		if err := ValidateSameUser(c, id); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		err = deleteUserByID(c.Context(), driver, id, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
 		}
 
 		successMessage := "User removed successfully"
@@ -96,13 +134,23 @@ func DeleteUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 func GetUserFriendByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		id := c.Params("id")
-		if err := validateUserID(id); err != nil {
-			return HandleFail(c, fiber.StatusBadRequest, "Validation ID failed", logger, err)
+
+		if err := validateUUID(id); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		exists, err := userExists(c.Context(), driver, id, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
 		}
 
 		user, err := getUserFriendByID(c.Context(), driver, id, logger)
 		if err != nil {
-			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
+			return HandleErrorWithStatus(c, err, logger)
 		}
 
 		if len(user) == 0 {
@@ -120,12 +168,12 @@ func CreateUser(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handle
 		var req models.CreateUserRequest
 
 		if err := ValidateRequest(c, &req); err != nil {
-			return HandleFail(c, fiber.StatusBadRequest, err.Error(), logger, nil)
+			return HandleFailWithStatus(c, err, logger)
 		}
 
 		data, err := createUser(c.Context(), driver, req, logger)
 		if err != nil {
-			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
+			return HandleErrorWithStatus(c, err, logger)
 		}
 
 		successMessage := "User created successfully"
@@ -231,18 +279,32 @@ func AddStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 	return func(c *fiber.Ctx) error {
 		var req models.StudentInfoRequest
 
-		if err := ValidateRequest(c, &req); err != nil {
-			return HandleFail(c, fiber.StatusBadRequest, err.Error(), logger, nil)
-		}
-
 		id := c.Params("id")
+
 		if err := validateUUID(id); err != nil {
-			return HandleFail(c, fiber.StatusBadRequest, err.Error(), logger, nil)
+			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err := addStudentInfo(c.Context(), driver, id, req, logger)
+		exists, err := userExists(c.Context(), driver, id, logger)
 		if err != nil {
-			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
+		}
+
+		if err := ValidateSameUser(c, id); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		if err := ValidateRequest(c, &req); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		err = addStudentInfo(c.Context(), driver, id, req, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
 		}
 
 		successMessage := "User profile updated successfully"
@@ -254,18 +316,32 @@ func UpdateStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 	return func(c *fiber.Ctx) error {
 		var req models.StudentInfoRequest
 
-		if err := ValidateRequest(c, &req); err != nil {
-			return HandleFail(c, fiber.StatusBadRequest, err.Error(), logger, nil)
-		}
-
 		id := c.Params("id")
+
 		if err := validateUUID(id); err != nil {
-			return HandleFail(c, fiber.StatusBadRequest, err.Error(), logger, nil)
+			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err := updateStudentInfo(c.Context(), driver, id, req, logger)
+		exists, err := userExists(c.Context(), driver, id, logger)
 		if err != nil {
-			return HandleError(c, fiber.StatusOK, err.Error(), logger, nil)
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
+		}
+
+		if err := ValidateSameUser(c, id); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		if err := ValidateRequest(c, &req); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		err = updateStudentInfo(c.Context(), driver, id, req, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
 		}
 
 		successMessage := "User student info updated successfully"
@@ -276,13 +352,27 @@ func UpdateStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 func DeleteStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		id := c.Params("id")
+
 		if err := validateUUID(id); err != nil {
-			return HandleFail(c, fiber.StatusBadRequest, err.Error(), logger, nil)
+			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err := deleteStudentInfo(c.Context(), driver, id, logger)
+		exists, err := userExists(c.Context(), driver, id, logger)
 		if err != nil {
-			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
+		}
+
+		if err := ValidateSameUser(c, id); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		err = deleteStudentInfo(c.Context(), driver, id, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
 		}
 
 		successMessage := "User student info removed successfully"
@@ -294,18 +384,32 @@ func AddUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 	return func(c *fiber.Ctx) error {
 		var req models.UserRequestCompany
 
-		if err := ValidateRequest(c, &req); err != nil {
-			return HandleFail(c, fiber.StatusBadRequest, err.Error(), logger, nil)
-		}
-
 		id := c.Params("id")
+
 		if err := validateUUID(id); err != nil {
-			return HandleFail(c, fiber.StatusBadRequest, err.Error(), logger, nil)
+			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err := addUserCompany(c.Context(), driver, id, req, logger)
+		if err := ValidateRequest(c, &req); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		exists, err := userExists(c.Context(), driver, id, logger)
 		if err != nil {
-			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
+		}
+
+		if err := ValidateSameUser(c, id); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		err = addUserCompany(c.Context(), driver, id, req, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
 		}
 
 		successMessage := "User profile updated successfully"
@@ -318,18 +422,31 @@ func UpdateUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 		var req models.UserCompanyUpdateRequest
 
 		if err := ValidateRequest(c, &req); err != nil {
-			return HandleFail(c, fiber.StatusBadRequest, err.Error(), logger, nil)
+			return HandleFailWithStatus(c, err, logger)
 		}
 
 		userID := c.Params("user_id")
 		companyID := c.Params("company_id")
 		if err := validateUUIDs(userID, companyID); err != nil {
-			return HandleFail(c, fiber.StatusBadRequest, err.Error(), logger, nil)
+			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err := updateUserCompany(c.Context(), driver, userID, companyID, req, logger)
+		exists, err := userExists(c.Context(), driver, userID, logger)
 		if err != nil {
-			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", userID), logger, nil)
+		}
+
+		if err := ValidateSameUser(c, userID); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		err = updateUserCompany(c.Context(), driver, userID, companyID, req, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
 		}
 
 		successMessage := "User company updated successfully"
@@ -342,12 +459,25 @@ func DeleteUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 		userID := c.Params("user_id")
 		companyID := c.Params("company_id")
 		if err := validateUUIDs(userID, companyID); err != nil {
-			return HandleFail(c, fiber.StatusBadRequest, err.Error(), logger, nil)
+			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err := deleteUserCompany(c.Context(), driver, userID, companyID, logger)
+		exists, err := userExists(c.Context(), driver, userID, logger)
 		if err != nil {
-			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", userID), logger, nil)
+		}
+
+		if err := ValidateSameUser(c, userID); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		err = deleteUserCompany(c.Context(), driver, userID, companyID, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
 		}
 		successMessage := "User company removed successfully"
 		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
