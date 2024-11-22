@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"github.com/joho/godotenv"
 	"log"
 	"os"
@@ -9,6 +10,7 @@ import (
 
 // Config struct holds all the configurations for the application
 type Config struct {
+	DBEnv           string
 	ServerPort      string
 	Neo4jURI        string
 	Neo4jUsername   string
@@ -28,12 +30,24 @@ func LoadConfig() Config {
 		log.Println("No .env file found, using environment variables or defaults")
 	}
 
-	return Config{
-		ServerPort:    GetEnv("SERVER_PORT", "3000"),
-		Neo4jURI:      GetEnv("NEO4J_URI", "bolt://localhost:7687"),
-		Neo4jUsername: GetEnv("NEO4J_USERNAME", "neo4j"),
-		Neo4jPassword: GetEnv("NEO4J_PASSWORD", "password"),
+	dbEnv := GetEnv("DB_ENV", "local")
+
+	config := Config{
+		DBEnv:      dbEnv,
+		ServerPort: fmt.Sprintf(":%s", GetEnv("PORT", "3000")),
 	}
+
+	if dbEnv == "aura" {
+		config.Neo4jURI = GetEnv("NEO4J_AURA_URI", "neo4j+ssc://your_aura_uri:7687")
+		config.Neo4jUsername = GetEnv("NEO4J_AURA_USERNAME", "aura_user")
+		config.Neo4jPassword = GetEnv("NEO4J_AURA_PASSWORD", "aura_password")
+	} else {
+		config.Neo4jURI = GetEnv("NEO4J_LOCAL_URI", "neo4j://localhost:7687")
+		config.Neo4jUsername = GetEnv("NEO4J_LOCAL_USERNAME", "local_user")
+		config.Neo4jPassword = GetEnv("NEO4J_LOCAL_PASSWORD", "local_password")
+	}
+
+	return config
 }
 
 func GetEnv(key, defaultValue string) string {

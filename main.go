@@ -7,6 +7,7 @@ import (
 	"alumni_api/middlewares"
 	"alumni_api/routes"
 	"context"
+
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
 )
@@ -40,7 +41,7 @@ func main() {
 	routes.AuthRoutes(api, driver, logger)
 
 	// Start the server
-	if err := app.Listen(":3000"); err != nil {
+	if err := app.Listen(cfg.ServerPort); err != nil {
 		logger.Fatal("Failed to start server", zap.Error(err))
 	}
 }
