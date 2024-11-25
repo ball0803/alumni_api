@@ -34,6 +34,10 @@ func GetUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
 		}
 
+		if err := ValidateSameUser(c, id); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
 		user, err := fetchUserByID(c.Context(), driver, id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
