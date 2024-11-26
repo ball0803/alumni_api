@@ -1,7 +1,7 @@
 package models
 
 type Post struct {
-	Title      string `json:"title,omitempty" mapstructure:"title" validate:"required,min=3,max=50"`
+	Title      string `json:"title,omitempty" mapstructure:"title" validate:"required,min=3,max=100"`
 	Content    string `json:"content,omitempty" mapstructure:"content" validate:"required,min=10,max=500"`
 	PostType   string `json:"post_type,omitempty" mapstructure:"post_type" validate:"required,oneof=event story job mentorship showcase donation_campaign announcement discussion survey"`
 	MediaURL   string `json:"media_url,omitempty" mapstructure:"media_url" validate:"omitempty,url"`
@@ -16,14 +16,8 @@ type UpdatePostRequest struct {
 	Visibility string `json:"visibility,omitempty" mapstructure:"visibility" validate:"omitempty,oneof=alumnus admin all"`
 }
 
-type Comment struct {
-	comment_id       string
-	post_id          string
-	user_id          string
-	comment          string
-	created_datetime string
-	reply_id         string
-	updated_datetime string
+type CommentRequest struct {
+	Comment string `json:"comment,omitempty" mapstructure:"comment" validate:"required,max=200"`
 }
 
 type Like struct {
