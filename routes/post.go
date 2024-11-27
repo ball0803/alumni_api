@@ -34,4 +34,8 @@ func PostRoutes(group fiber.Router, driver neo4j.DriverWithContext, logger *zap.
 	post.Put("/:post_id/comment/:comment_id", handlers.UpdateCommentPost(driver, logger))
 
 	post.Delete("/:post_id/comment/:comment_id", handlers.DeleteCommentPost(driver, logger))
+
+	post.Post("/comment/:comment_id/like", handlers.LikeComment(driver, logger))
+
+	post.Delete("/comment/:comment_id/like", handlers.UnlikeComment(driver, logger))
 }

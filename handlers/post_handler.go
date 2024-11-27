@@ -470,6 +470,59 @@ func deleteCommentPost(ctx context.Context, driver neo4j.DriverWithContext, comm
 	return nil
 }
 
+func likeComment(ctx context.Context, driver neo4j.DriverWithContext, userID, commentID string, logger *zap.Logger) error {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeWrite,
+	})
+	defer session.Close(ctx)
+
+	query := `
+  MATCH (u:UserProfile {user_id: $user_id})
+  MATCH (c:Comment {comment_id: $comment_id})
+  MERGE (c)<-[:LIKES]-(u)
+  `
+
+	params := map[string]interface{}{
+		"user_id":    userID,
+		"comment_id": commentID,
+	}
+
+	_, err := session.Run(ctx, query, params)
+	if err != nil {
+		logger.Error("Failed to like comment", zap.Error(err))
+		return fiber.NewError(http.StatusInternalServerError, "Failed to like comment")
+	}
+
+	return nil
+}
+
+func unlikeComment(ctx context.Context, driver neo4j.DriverWithContext, userID, commentID string, logger *zap.Logger) error {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeWrite,
+	})
+	defer session.Close(ctx)
+
+	query := `
+  MATCH (u:UserProfile {user_id: $user_id})-[l:LIKES]->(c:Comment {comment_id: $comment_id})
+  DELETE l
+  `
+
+	params := map[string]interface{}{
+		"user_id":    userID,
+		"comment_id": commentID,
+	}
+
+	_, err := session.Run(ctx, query, params)
+	if err != nil {
+		logger.Error("Failed to unlike comment", zap.Error(err))
+		return fiber.NewError(http.StatusInternalServerError, "Failed to unlike comment")
+	}
+
+	return nil
+}
+
 func getPostUserID(ctx context.Context, driver neo4j.DriverWithContext, postID string, logger *zap.Logger) (string, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",

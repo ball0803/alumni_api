@@ -286,3 +286,49 @@ func DeleteCommentPost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
 	}
 }
+
+func LikeComment(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		commentID := c.Params("comment_id")
+
+		if err := validateUUID(commentID); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		claim, ok := c.Locals("claims").(*models.Claims)
+		if !ok {
+			return HandleFail(c, fiber.StatusUnauthorized, "Unauthorized claim", logger, nil)
+		}
+
+		err := likeComment(c.Context(), driver, claim.UserID, commentID, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		successMessage := "Create like Succesfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
+	}
+}
+
+func UnlikeComment(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		commentID := c.Params("comment_id")
+
+		if err := validateUUID(commentID); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		claim, ok := c.Locals("claims").(*models.Claims)
+		if !ok {
+			return HandleFail(c, fiber.StatusUnauthorized, "Unauthorized claim", logger, nil)
+		}
+
+		err := unlikeComment(c.Context(), driver, claim.UserID, commentID, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		successMessage := "Remove like Succesfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
+	}
+}
