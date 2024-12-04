@@ -22,14 +22,18 @@ type UserProfile struct {
 }
 
 type StudentInfo struct {
-	Faculty        string  `json:"faculty,omitempty" mapstructure:"faculty" validate:"required"`
-	Department     string  `json:"department,omitempty" mapstructure:"department" validate:"required"`
-	Field          string  `json:"field,omitempty" mapstructure:"field" validate:"required"`
-	StudentType    string  `json:"student_type,omitempty" mapstructure:"student_type" validate:"required"`
-	EducationLevel string  `json:"education_level,omitempty" mapstructure:"education_level" validate:"required"`
-	AdmitYear      int16   `json:"admit_year,omitempty" mapstructure:"admit_year" validate:"gte=1950,lte=2100"`
-	GraduateYear   int16   `json:"graduate_year,omitempty" mapstructure:"graduate_year" validate:"omitempty,gte=2530"`
-	GPAX           float32 `json:"gpax,omitempty" mapstructure:"gpax" validate:"omitempty,gte=0,lte=4.0"`
+	CollegeInfo    CollegeInfo `json:"college_info,omitempty" mapstructure:"college_info" validate:"omitempty"`
+	EducationLevel string      `json:"education_level,omitempty" mapstructure:"education_level" validate:"omitempty"`
+	AdmitYear      int16       `json:"admit_year,omitempty" mapstructure:"admit_year" validate:"omitempty,gte=1950,lte=2100"`
+	GraduateYear   int16       `json:"graduate_year,omitempty" mapstructure:"graduate_year" validate:"omitempty,gte=2530"`
+	GPAX           float32     `json:"gpax,omitempty" mapstructure:"gpax" validate:"omitempty,gte=0.0,lte=4.0"`
+}
+
+type CollegeInfo struct {
+	Faculty     string `json:"faculty,omitempty" mapstructure:"faculty" validate:"required"`
+	Department  string `json:"department,omitempty" mapstructure:"department" validate:"required"`
+	Field       string `json:"field,omitempty" mapstructure:"field" validate:"required"`
+	StudentType string `json:"student_type,omitempty" mapstructure:"student_type" validate:"required"`
 }
 
 type Company struct {

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"alumni_api/encrypt"
 	"alumni_api/models"
 	"fmt"
 
@@ -21,9 +22,9 @@ func GetUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 	return func(c *fiber.Ctx) error {
 		id := c.Params("id")
 
-		if err := validateUUID(id); err != nil {
-			return HandleFailWithStatus(c, err, logger)
-		}
+		// if err := validateUUID(id); err != nil {
+		// 	return HandleFailWithStatus(c, err, logger)
+		// }
 
 		exists, err := userExists(c.Context(), driver, id, logger)
 		if err != nil {
@@ -34,9 +35,9 @@ func GetUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
 		}
 
-		if err := ValidateSameUser(c, id); err != nil {
-			return HandleFailWithStatus(c, err, logger)
-		}
+		// if err := ValidateSameUser(c, id); err != nil {
+		// 	return HandleFailWithStatus(c, err, logger)
+		// }
 
 		user, err := fetchUserByID(c.Context(), driver, id, logger)
 		if err != nil {
@@ -69,17 +70,13 @@ func FindUserByFilter(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.
 // UpdateUserProfile handles updating a user's profile in the Neo4j database.
 func UpdateUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		var req models.UserProfile
+		var req models.UpdateUserProfileRequest
 
 		id := c.Params("id")
 
-		if err := validateUUID(id); err != nil {
-			return HandleErrorWithStatus(c, err, logger)
-		}
-
-		if err := ValidateRequest(c, &req); err != nil {
-			return HandleFailWithStatus(c, err, logger)
-		}
+		// if err := validateUUID(id); err != nil {
+		// 	return HandleErrorWithStatus(c, err, logger)
+		// }
 
 		exists, err := userExists(c.Context(), driver, id, logger)
 		if err != nil {
@@ -90,7 +87,30 @@ func UpdateUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
 		}
 
-		if err := ValidateSameUser(c, id); err != nil {
+		// if err := ValidateSameUser(c, id); err != nil {
+		// 	return HandleFailWithStatus(c, err, logger)
+		// }
+
+		if err := ValidateRequest(c, &req); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		FieldToEncrypt := []string{
+			"StudentInfo.GPAX",
+			"StudentInfo.AdmitYear",
+			"StudentInfo.GraduateYear",
+			"StudentInfo.EducationLevel",
+			"ContactInfo.Email",
+			"ContactInfo.Github",
+			"ContactInfo.Linkedin",
+			"ContactInfo.Facebook",
+			"ContactInfo.Phone",
+			"Companies.Company",
+			"Companies.Address",
+			"Companies.Position",
+		}
+
+		if err := encrypt.EncryptStructFields(&req, FieldToEncrypt); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 

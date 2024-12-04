@@ -25,3 +25,15 @@ primary_region = 'sin'
   memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
+
+[[log_transforms]]
+type = "remap"
+source = '''
+.parsed = parse_json(.message) ?? {}
+.level = .parsed.level
+.method = .parsed.method
+.path = .parsed.path
+.status = .parsed.status
+del(.message)
+. |= merge(.parsed)
+'''

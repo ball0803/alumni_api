@@ -3,20 +3,13 @@ package auth
 import (
 	"alumni_api/config"
 	"alumni_api/models"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
-	"encoding/base64"
-	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
-	"io"
 )
 
 var jwtSecret = []byte(config.GetEnv("JWT_SECRET_KEY", "secret_key"))
-var encryptionKey = []byte(config.GetEnv("ENCRYPTION_KEY", "default_32_byte_key")) // Must be 32 bytes for AES-256
 
 // GenerateJWT generates a JWT for a user
 func GenerateJWT(userID, role string, admitYear int) (string, error) {
@@ -58,57 +51,4 @@ func HashPassword(password string) (string, error) {
 func CheckPasswordHash(password, hash string) error {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err
-}
-
-// Encrypt encrypts plaintext using AES-256 GCM
-func Encrypt(plaintext string) (string, error) {
-	block, err := aes.NewCipher(encryptionKey)
-	if err != nil {
-		return "", err
-	}
-
-	aesGCM, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-
-	nonce := make([]byte, aesGCM.NonceSize())
-	_, err = io.ReadFull(rand.Reader, nonce)
-	if err != nil {
-		return "", err
-	}
-
-	ciphertext := aesGCM.Seal(nonce, nonce, []byte(plaintext), nil)
-	return base64.StdEncoding.EncodeToString(ciphertext), nil
-}
-
-// Decrypt decrypts ciphertext using AES-256 GCM
-func Decrypt(ciphertext string) (string, error) {
-	decodedCiphertext, err := base64.StdEncoding.DecodeString(ciphertext)
-	if err != nil {
-		return "", err
-	}
-
-	block, err := aes.NewCipher(encryptionKey)
-	if err != nil {
-		return "", err
-	}
-
-	aesGCM, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-
-	nonceSize := aesGCM.NonceSize()
-	if len(decodedCiphertext) < nonceSize {
-		return "", errors.New("invalid ciphertext")
-	}
-
-	nonce, encryptedData := decodedCiphertext[:nonceSize], decodedCiphertext[nonceSize:]
-	plaintext, err := aesGCM.Open(nil, nonce, encryptedData, nil)
-	if err != nil {
-		return "", err
-	}
-
-	return string(plaintext), nil
 }

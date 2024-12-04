@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"alumni_api/encrypt"
 	"alumni_api/models"
 	"alumni_api/utils"
 	"context"
@@ -155,67 +156,95 @@ func getUserFriendByID(ctx context.Context, driver neo4j.DriverWithContext, id s
 	return friends, nil
 }
 
-func fetchUserByID(ctx context.Context, driver neo4j.DriverWithContext, id string, logger *zap.Logger) (models.UserProfile, error) {
+func fetchUserByID(ctx context.Context, driver neo4j.DriverWithContext, id string, logger *zap.Logger) (map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{DatabaseName: "neo4j", AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
 	query := `
-		MATCH (u:UserProfile {user_id: $id})-[r:HAS_WORK_WITH]->(c:Company)
-		RETURN u, collect({company: c, position: r.position}) AS companies
+      MATCH (u:UserProfile {user_id: $id})
+      OPTIONAL MATCH (u)-[r:HAS_WORK_WITH]->(c:Company)
+      OPTIONAL MATCH (u)-->(st:StudentType)<--(fld:Field)<--(d:Department)<--(f:Faculty)
+      RETURN
+          u.user_id AS user_id,
+          u.username AS username,
+          u.gender AS gender,
+          toString(u.dob) AS dob,
+          u.first_name + " " + u.last_name AS name,
+          u.first_name_eng + " " + u.last_name_eng AS name_eng,
+          u.profile_picture AS profile_picture,
+          u.role AS role,
+          {
+              faculty: f.name,
+              department: d.name,
+              field: fld.name,
+              student_type: st.name,
+              education_level: u.education_level,
+              admit_year: u.admit_year,
+              graduate_year: u.graduate_year,
+              gpax: u.gpax
+          } AS student_info,
+          collect({
+              company: c.name,
+              address: c.address,
+              position: r.position
+          }) AS companies,
+          {
+              email: u.email,
+              github: u.github,
+              linkedin: u.linkdin,
+              facebook: u.facebook,
+              phone: u.phone
+          } AS contact_info
 	`
 
-	result, err := session.Run(ctx, query, map[string]interface{}{"id": id})
+	params := map[string]interface{}{
+		"id": id,
+	}
+
+	result, err := session.Run(ctx, query, params)
 	if err != nil {
 		logger.Error(errRetrievalFailed, zap.Error(err))
-		return models.UserProfile{}, fiber.NewError(http.StatusInternalServerError, errRetrievalFailed)
+		return nil, fiber.NewError(http.StatusInternalServerError, errRetrievalFailed)
 	}
 
 	record, err := result.Single(ctx)
 	if err != nil {
 		logger.Error(errRetrievalFailed, zap.Error(err))
-		return models.UserProfile{}, fiber.NewError(http.StatusInternalServerError, errRetrievalFailed)
+		return nil, fiber.NewError(http.StatusInternalServerError, errRetrievalFailed)
 	}
 
-	userNode, ok := record.Get("u")
-	if !ok {
-		logger.Warn(errUserNotFound)
-		return models.UserProfile{}, fiber.NewError(fiber.StatusNotFound, errUserNotFound)
-	}
-	props := userNode.(neo4j.Node).Props
-	var user models.UserProfile
+	ret := utils.CleanNullValues(record.AsMap()).(map[string]interface{})
 
 	dateFields := []string{"dob"}
-	if err := utils.ConvertMapDateFields(props, dateFields, "2006-01-02"); err != nil {
+
+	if err := utils.ConvertMapDateFields(ret, dateFields, "2006-01-02"); err != nil {
 		logger.Error("Error converting date fields", zap.Error(err))
-		return models.UserProfile{}, fiber.NewError(http.StatusInternalServerError, "Failed to parse date fields")
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to parse date fields")
 	}
 
-	if err := utils.MapToStruct(props, &user); err != nil {
-		logger.Error("Error decoding user properties", zap.Error(err))
-		return models.UserProfile{}, fiber.NewError(http.StatusInternalServerError, err.Error())
+	fieldsToDecrypt := []string{
+		"student_info.gpax",
+		"student_info.admit_year",
+		"student_info.graduate_year",
+		"student_info.education_level",
+		"contact_info.email",
+		"contact_info.github",
+		"contact_info.linkedin",
+		"contact_info.facebook",
+		"contact_info.phone",
+		"companies.company",
+		"companies.address",
+		"companies.position",
 	}
 
-	companyRecords, _ := record.Get("companies")
-	companyList := companyRecords.([]interface{})
-	user.Companies = make([]models.Company, len(companyList))
+	err = encrypt.DecryptMapFields(ret, fieldsToDecrypt, "")
 
-	for i, companyData := range companyList {
-		compMap := companyData.(map[string]interface{})
-		companyNode := compMap["company"].(neo4j.Node).Props
-		jobTitle := compMap["position"].(string)
-
-		// Map to Company struct and add the job field
-		var company models.Company
-		if err := utils.MapToStruct(companyNode, &company); err != nil {
-			logger.Error("Error mapping company properties", zap.Error(err))
-			return models.UserProfile{}, fiber.NewError(http.StatusInternalServerError, "Failed to map company")
-		}
-		company.Position = jobTitle
-
-		user.Companies[i] = company
+	if err != nil {
+		logger.Error("Error decrypting fields: %v", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failde to Decrypt Data")
 	}
 
-	return user, nil
+	return ret, nil
 }
 
 func fetchUserByFilter(ctx context.Context, driver neo4j.DriverWithContext, filter models.UserRequestFilter, logger *zap.Logger) ([]map[string]interface{}, error) {
@@ -285,7 +314,7 @@ func fetchUserByFilter(ctx context.Context, driver neo4j.DriverWithContext, filt
 	return users, nil
 }
 
-func updateUserByID(ctx context.Context, driver neo4j.DriverWithContext, id string, updatedData models.UserProfile, logger *zap.Logger) (models.UserProfile, error) {
+func updateUserByID(ctx context.Context, driver neo4j.DriverWithContext, id string, updatedData models.UpdateUserProfileRequest, logger *zap.Logger) (models.UserProfile, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -631,23 +660,6 @@ func addUserCompany(ctx context.Context, driver neo4j.DriverWithContext, id stri
 		AccessMode:   neo4j.AccessModeWrite,
 	})
 	defer session.Close(ctx)
-
-	// Check if the user exists before starting the transaction
-	checkUserQuery := `
-    MATCH (u:UserProfile {user_id: $userID})
-    RETURN u LIMIT 1
-  `
-	userResult, err := session.Run(ctx, checkUserQuery, map[string]interface{}{
-		"userID": id,
-	})
-	if err != nil {
-		logger.Error("Failed to check user existence", zap.Error(err))
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to check user existence")
-	}
-	if !userResult.Next(ctx) {
-		logger.Warn("UserProfile not found", zap.String("userID", id))
-		return fiber.NewError(fiber.StatusNotFound, "UserProfile not found")
-	}
 
 	// Begin the transaction for adding or connecting companies
 	tx, err := session.BeginTransaction(ctx)

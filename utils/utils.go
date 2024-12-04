@@ -93,6 +93,37 @@ func SetEmptyMapsToNil(v interface{}) {
 	}
 }
 
+// CleanNullValues removes null fields, empty arrays, and empty maps from a map
+func CleanNullValues(input interface{}) interface{} {
+	// Check the type of input
+	switch v := input.(type) {
+	case map[string]interface{}:
+		// Iterate over the map
+		for key, value := range v {
+			// Clean nested maps and arrays
+			v[key] = CleanNullValues(value)
+			// If the value is null or empty, remove it from the map
+			if IsEmpty(v[key]) {
+				delete(v, key)
+			}
+		}
+		return v
+	case []interface{}:
+		// Clean each element of the array
+		var cleaned []interface{}
+		for _, item := range v {
+			cleanedItem := CleanNullValues(item)
+			if !IsEmpty(cleanedItem) {
+				cleaned = append(cleaned, cleanedItem)
+			}
+		}
+		return cleaned
+	default:
+		// For non-map, non-array types, just return the value as it is
+		return v
+	}
+}
+
 // Helper function to check if a value is zero-valued, nil, or an empty map
 func IsEmpty(value interface{}) bool {
 	v := reflect.ValueOf(value)
