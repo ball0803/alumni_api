@@ -10,17 +10,18 @@ import (
 
 // Config struct holds all the configurations for the application
 type Config struct {
-	DBEnv           string
-	ServerPort      string
-	Neo4jURI        string
-	Neo4jUsername   string
-	Neo4jPassword   string
-	RedisAddress    string
-	RedisPassword   string
-	KafkaBrokers    []string
-	MinREDThreshold int
-	MaxREDThreshold int
-	MaxREDProb      float64
+	DBEnv            string
+	ServerPort       string
+	Neo4jURI         string
+	Neo4jUsername    string
+	Neo4jPassword    string
+	RedisAddress     string
+	RedisPassword    string
+	KafkaBrokers     []string
+	MinREDThreshold  int
+	MaxREDThreshold  int
+	MaxREDProb       float64
+	AESEncryptionKey []byte
 }
 
 // LoadConfig loads configuration values from environment variables or defaults
@@ -33,8 +34,9 @@ func LoadConfig() Config {
 	dbEnv := GetEnv("DB_ENV", "local")
 
 	config := Config{
-		DBEnv:      dbEnv,
-		ServerPort: fmt.Sprintf(":%s", GetEnv("PORT", "3000")),
+		DBEnv:            dbEnv,
+		ServerPort:       fmt.Sprintf(":%s", GetEnv("PORT", "3000")),
+		AESEncryptionKey: []byte(GetEnv("AES_ENCRYPTION_KEY", "thisis32byteslongkeyforaes256!")),
 	}
 
 	if dbEnv == "aura" {

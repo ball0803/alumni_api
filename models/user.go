@@ -22,7 +22,7 @@ type UserProfile struct {
 }
 
 type StudentInfo struct {
-	CollegeInfo    CollegeInfo `json:"college_info,omitempty" mapstructure:"college_info" validate:"omitempty"`
+	CollegeInfo    CollegeInfo `json:"college_info,omitempty" mapstructure:"college_info,squash" validate:"omitempty"`
 	EducationLevel string      `json:"education_level,omitempty" mapstructure:"education_level" validate:"omitempty"`
 	AdmitYear      int16       `json:"admit_year,omitempty" mapstructure:"admit_year" validate:"omitempty,gte=1950,lte=2100"`
 	GraduateYear   int16       `json:"graduate_year,omitempty" mapstructure:"graduate_year" validate:"omitempty,gte=2530"`
