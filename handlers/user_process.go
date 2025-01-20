@@ -3,7 +3,10 @@ package handlers
 import (
 	"alumni_api/encrypt"
 	"alumni_api/models"
+	"alumni_api/utils"
+	// "encoding/json"
 	"fmt"
+	// "net/url"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
@@ -72,20 +75,27 @@ func UpdateUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 	return func(c *fiber.Ctx) error {
 		var req models.UpdateUserProfileRequest
 
-		id := c.Params("id")
+		// Print the parsed request map
+		// fmt.Println("Parsed request:", out)
+
+		// if err != nil {
+		// 	return HandleErrorWithStatus(c, err, logger)
+		// }
+		//
+		// id := c.Params("id")
 
 		// if err := validateUUID(id); err != nil {
 		// 	return HandleErrorWithStatus(c, err, logger)
 		// }
 
-		exists, err := userExists(c.Context(), driver, id, logger)
-		if err != nil {
-			return HandleErrorWithStatus(c, err, logger)
-		}
-
-		if !exists {
-			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
-		}
+		// exists, err := userExists(c.Context(), driver, id, logger)
+		// if err != nil {
+		// 	return HandleErrorWithStatus(c, err, logger)
+		// }
+		//
+		// if !exists {
+		// 	return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
+		// }
 
 		// if err := ValidateSameUser(c, id); err != nil {
 		// 	return HandleFailWithStatus(c, err, logger)
@@ -95,32 +105,42 @@ func UpdateUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		FieldToEncrypt := []string{
-			"StudentInfo.GPAX",
-			"StudentInfo.AdmitYear",
-			"StudentInfo.GraduateYear",
-			"StudentInfo.EducationLevel",
-			"ContactInfo.Email",
-			"ContactInfo.Github",
-			"ContactInfo.Linkedin",
-			"ContactInfo.Facebook",
-			"ContactInfo.Phone",
-			"Companies.Company",
-			"Companies.Address",
-			"Companies.Position",
+		reqMap, err := utils.StructToMap(req)
+		if err != nil {
+			return err
 		}
 
-		if err := encrypt.EncryptStructFields(&req, FieldToEncrypt); err != nil {
+		// fmt.Println(reqMap)
+
+		FieldToEncrypt := []string{
+			"gpax",
+			// "student_info.admit_year",
+			// "student_info.graduate_year",
+			// "student_info.education_level",
+			// "student_info.email",
+			// "student_info.github",
+			// "student_info.linkedin",
+			// "student_info.facebook",
+			// "student_info.phone",
+			// "Companies.Company",
+			// "Companies.Address",
+			// "Companies.Position",
+		}
+
+		if err := encrypt.EncryptMapFields(reqMap, FieldToEncrypt); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		user, err := updateUserByID(c.Context(), driver, id, req, logger)
-		if err != nil {
-			return HandleError(c, fiber.StatusInternalServerError, "Failed to Update users", logger, err)
-		}
+		// fmt.Println("after encrypt", reqMap)
 
-		successMessage := "User profile updated successfully"
-		return HandleSuccess(c, fiber.StatusOK, successMessage, user, logger)
+		// user, err := updateUserByID(c.Context(), driver, id, req, logger)
+		// if err != nil {
+		// 	return HandleError(c, fiber.StatusInternalServerError, "Failed to Update users", logger, err)
+		// }
+		//
+		// successMessage := "User profile updated successfully"
+		// return HandleSuccess(c, fiber.StatusOK, successMessage, user, logger)
+		return nil
 	}
 }
 

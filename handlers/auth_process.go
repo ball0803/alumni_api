@@ -32,8 +32,9 @@ func Login(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 		}
 
 		ret := map[string]interface{}{
-			"token":   token,
-			"user_id": user.UserID,
+			"token":     token,
+			"user_id":   user.UserID,
+			"user_role": user.Role,
 		}
 
 		successMessage := "Login Succesfully"

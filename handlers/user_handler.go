@@ -327,7 +327,7 @@ func updateUserByID(ctx context.Context, driver neo4j.DriverWithContext, id stri
 		return models.UserProfile{}, fiber.NewError(http.StatusInternalServerError, "Internal server error")
 	}
 
-	fmt.Println(properties)
+	// fmt.Println(properties)
 
 	// Execute the transaction with the write operation
 	updatedUser, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {

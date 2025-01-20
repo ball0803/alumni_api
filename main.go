@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"go.uber.org/zap"
 )
 
@@ -31,6 +32,13 @@ func main() {
 	// Set up Fiber app
 	app := fiber.New()
 	api := app.Group("/v1")
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     "http://localhost:5173",
+		AllowMethods:     "GET,POST,PUT,DELETE",
+		AllowHeaders:     "Content-Type,Authorization",
+		AllowCredentials: true,
+	}))
+
 	api.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Hello, World!")
 	})

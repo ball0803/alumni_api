@@ -2,67 +2,123 @@ package encrypt
 
 import (
 	"alumni_api/config"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
-	"encoding/base64"
-	"errors"
-	"fmt"
+	"reflect"
+	"strings"
 )
 
 var config_value = config.LoadConfig()
 var encryptionKey = config_value.AESEncryptionKey
 
-// Encrypt encrypts plaintext using AES-256 GCM
-func Encrypt(plaintext string) (string, error) {
-	block, err := aes.NewCipher(encryptionKey)
-	if err != nil {
-		return "", fmt.Errorf("failed to create cipher: %w", err)
+// AES encrypt function for any type of reflect.Value (string, []byte, int, float)
+func AESEncrypt(input reflect.Value) (reflect.Value, error) {
+	if input.Kind() == reflect.Ptr {
+		input = input.Elem()
 	}
 
-	aesGCM, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", fmt.Errorf("failed to create GCM: %w", err)
+	// Check if the type is customtype.Encrypted with any type parameter
+	if strings.HasPrefix(input.Type().String(), "customtype.Encrypted[") && input.Kind() == reflect.Struct {
+		// Extract actual value (e.g., `Value` field from a struct)
+		var err error
+		input, err = extractActualValue(input, "Value")
+		if err != nil {
+			return reflect.Value{}, err
+		}
 	}
 
-	nonceSize := aesGCM.NonceSize()
-	nonce := make([]byte, nonceSize)
-	_, err = rand.Read(nonce)
+	// Convert to bytes
+	data, err := convertToBytes(input)
 	if err != nil {
-		return "", fmt.Errorf("failed to generate nonce: %w", err)
+		return reflect.Value{}, err
 	}
 
-	ciphertext := aesGCM.Seal(nonce, nonce, []byte(plaintext), nil)
-	return base64.StdEncoding.EncodeToString(ciphertext), nil
+	// Encrypt the data
+	encrypted, err := encryptAES(data, encryptionKey)
+	if err != nil {
+		return reflect.Value{}, err
+	}
+
+	return reflect.ValueOf(encrypted), nil
 }
 
-// Decrypt decrypts ciphertext using AES-256 GCM
-func Decrypt(ciphertext string) (string, error) {
-	decodedCiphertext, err := base64.StdEncoding.DecodeString(ciphertext)
+func AESDecrypt(input reflect.Value, originalType reflect.Kind) (reflect.Value, error) {
+	if input.Kind() == reflect.Ptr {
+		input = input.Elem()
+	}
+
+	// Check if the type is customtype.Encrypted with any type parameter
+	if strings.HasPrefix(input.Type().String(), "customtype.Encrypted[") && input.Kind() == reflect.Struct {
+		// Extract actual value (e.g., `Value` field from a struct)
+		var err error
+		input, err = extractActualValue(input, "Raw")
+		if err != nil {
+			return reflect.Value{}, err
+		}
+	}
+
+	// Decrypt the data
+	data, err := decryptAES(input.Bytes(), encryptionKey)
 	if err != nil {
-		return "", err
+		return reflect.Value{}, err
 	}
 
-	block, err := aes.NewCipher(encryptionKey)
+	// Convert decrypted data back to its original type
+	return convertFromBytes(data, originalType)
+}
+
+// Encrypt any type of reflect.Value (string, []byte, int, float) with type header
+func AESEncryptWithHeader(input reflect.Value) (reflect.Value, error) {
+	if input.Kind() == reflect.Ptr {
+		input = input.Elem()
+	}
+
+	// Check if the type is customtype.Encrypted with any type parameter
+	if strings.HasPrefix(input.Type().String(), "customtype.Encrypted[") && input.Kind() == reflect.Struct {
+		// Extract actual value (e.g., `Value` field from a struct)
+		var err error
+		input, err = extractActualValue(input, "Value")
+		if err != nil {
+			return reflect.Value{}, err
+		}
+	}
+
+	// Convert to bytes with a type header
+	data, err := convertToBytesWithHeader(input)
 	if err != nil {
-		return "", err
+		return reflect.Value{}, err
 	}
 
-	aesGCM, err := cipher.NewGCM(block)
+	// Encrypt the data
+	encrypted, err := encryptAES(data, encryptionKey)
 	if err != nil {
-		return "", err
+		return reflect.Value{}, err
 	}
 
-	nonceSize := aesGCM.NonceSize()
-	if len(decodedCiphertext) < nonceSize {
-		return "", errors.New("invalid ciphertext")
+	// Return the encrypted data as a reflect.Value
+	return reflect.ValueOf(encrypted), nil
+}
+
+// Decrypt data with AES and infer type from the embedded header
+func AESDecryptWithHeader(input reflect.Value) (reflect.Value, error) {
+	if input.Kind() == reflect.Ptr {
+		input = input.Elem()
 	}
 
-	nonce, encryptedData := decodedCiphertext[:nonceSize], decodedCiphertext[nonceSize:]
-	plaintext, err := aesGCM.Open(nil, nonce, encryptedData, nil)
+	// Check if the type is customtype.Encrypted with any type parameter
+	if strings.HasPrefix(input.Type().String(), "customtype.Encrypted[") && input.Kind() == reflect.Struct {
+		// Extract actual value (e.g., `Value` field from a struct)
+		var err error
+		input, err = extractActualValue(input, "Raw")
+		if err != nil {
+			return reflect.Value{}, err
+		}
+	}
+
+	// Decrypt the data
+	decryptedData, err := decryptAES(input.Bytes(), encryptionKey)
 	if err != nil {
-		return "", err
+		return reflect.Value{}, err
 	}
 
-	return string(plaintext), nil
+	// Convert decrypted data back to its original type using the type header
+	return convertFromBytesWithHeader(decryptedData)
 }
