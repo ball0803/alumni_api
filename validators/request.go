@@ -1,6 +1,7 @@
 package validators
 
 import (
+	"alumni_api/utils"
 	"fmt"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -12,6 +13,8 @@ func Request(c *fiber.Ctx, req interface{}) error {
 	if err := c.BodyParser(req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request payload")
 	}
+
+	utils.SetEmptyMapsToNil(req)
 
 	// Check if req is a slice (array) and validate each element
 	reqValue := reflect.ValueOf(req)

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 )
@@ -50,7 +51,8 @@ func traverseStruct(structValue reflect.Value, fields []string) []reflect.Value 
 		if i == len(fields)-1 {
 			// Add the final field's value to the result
 			field := structValue.FieldByName(fieldName)
-			if field.IsValid() {
+
+			if field.IsValid() && !field.IsZero() {
 				result = append(result, field)
 			}
 			return result
@@ -154,4 +156,92 @@ func traverseMap(value reflect.Value, fields []string, result *[]struct {
 		// If we encounter a type we cannot handle (e.g., basic types), return early
 		return
 	}
+}
+
+// ReplaceMapsWithRaw traverses deeply nested maps, slices, and structs to replace
+// maps with both "Raw" and "Value" fields with only the "Raw" value.
+func ReplaceMapsWithRaw(input interface{}) interface{} {
+	val := reflect.ValueOf(input)
+
+	// Handle pointer and interface dereferencing
+	for val.Kind() == reflect.Ptr || val.Kind() == reflect.Interface {
+		if val.IsValid() {
+			val = val.Elem()
+		} else {
+			return input // Return early if nil
+		}
+	}
+
+	switch val.Kind() {
+	case reflect.Map:
+		// Iterate over all keys in the map
+		// fmt.Println(val)
+		for _, key := range val.MapKeys() {
+			mapValue := val.MapIndex(key).Elem()
+			fmt.Println(key, mapValue, mapValue.Kind())
+			// Check if this is a map with "Raw" and "Value" fields
+			if isRawValueMap(mapValue) {
+				// Replace the map with the "Raw" field value directly
+				rawValue := mapValue.MapIndex(reflect.ValueOf("Raw"))
+				// Set the "Raw" value in place in the map
+				val.SetMapIndex(key, rawValue)
+			} else {
+				// Process nested values recursively
+				processedValue := ReplaceMapsWithRaw(mapValue.Interface())
+				val.SetMapIndex(key, reflect.ValueOf(processedValue))
+			}
+		}
+		return input // Return the modified map
+
+	case reflect.Slice:
+		// Iterate over the slice and recursively process elements
+		for i := 0; i < val.Len(); i++ {
+			processedElement := ReplaceMapsWithRaw(val.Index(i).Interface())
+			val.Index(i).Set(reflect.ValueOf(processedElement))
+		}
+		return input // Return the modified slice
+
+	case reflect.Struct:
+		// Traverse struct fields and recursively process them
+		for i := 0; i < val.NumField(); i++ {
+			field := val.Field(i)
+			// fmt.Println(field, field.Kind())
+			if field.CanSet() {
+				processedField := ReplaceMapsWithRaw(field.Interface())
+				field.Set(reflect.ValueOf(processedField))
+			}
+		}
+		return input // Return the modified struct
+
+	default:
+		// Return the value unchanged for unsupported types
+		return input
+	}
+}
+
+// isRawValueMap checks if a map has both "Raw" and "Value" keys.
+func isRawValueMap(value reflect.Value) bool {
+	// Dereference pointers or interfaces until we reach the actual value
+	for value.Kind() == reflect.Ptr || value.Kind() == reflect.Interface {
+		if value.IsValid() {
+			value = value.Elem()
+		} else {
+			return false // Invalid value
+		}
+	}
+
+	// Ensure the value is a map before proceeding
+	if value.Kind() != reflect.Map {
+		return false
+	} else {
+		// Safely check for "Raw" and "Value" keys
+		rawKey := reflect.ValueOf("Raw")
+		valueKey := reflect.ValueOf("Value")
+
+		hasRaw := value.MapIndex(rawKey).IsValid()
+		hasValue := value.MapIndex(valueKey).IsValid()
+
+		return hasRaw && hasValue
+	}
+
 }

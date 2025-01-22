@@ -24,31 +24,31 @@ type UserProfile struct {
 
 type StudentInfo struct {
 	CollegeInfo    CollegeInfo                    `json:"college_info,omitempty" mapstructure:"college_info,squash" validate:"omitempty"`
-	EducationLevel string                         `json:"education_level,omitempty" mapstructure:"education_level" validate:"omitempty"`
-	AdmitYear      customtypes.Encrypted[int16]   `json:"admit_year,omitempty" mapstructure:"admit_year" validate:"omitempty,gte=1950,lte=2100"`
-	GraduateYear   customtypes.Encrypted[int16]   `json:"graduate_year,omitempty" mapstructure:"graduate_year" validate:"omitempty,gte=2530"`
-	GPAX           customtypes.Encrypted[float32] `json:"gpax,omitempty" mapstructure:"gpax" validate:"omitempty,gte=0.0,lte=4.0"`
+	EducationLevel string                         `json:"education_level,omitempty" mapstructure:"education_level,omitempty" validate:"omitempty"`
+	AdmitYear      customtypes.Encrypted[int16]   `json:"admit_year,omitempty" mapstructure:"admit_year,omitempty" validate:"omitempty,gte=1950,lte=2100"`
+	GraduateYear   customtypes.Encrypted[int16]   `json:"graduate_year,omitempty" mapstructure:"graduate_year,omitempty" validate:"omitempty,gte=2530"`
+	GPAX           customtypes.Encrypted[float32] `json:"gpax,omitempty" mapstructure:"gpax,omitempty" validate:"omitempty,gte=0.0,lte=4.0"`
 }
 
 type CollegeInfo struct {
-	Faculty     string `json:"faculty,omitempty" mapstructure:"faculty" validate:"required"`
-	Department  string `json:"department,omitempty" mapstructure:"department" validate:"required"`
-	Field       string `json:"field,omitempty" mapstructure:"field" validate:"required"`
-	StudentType string `json:"student_type,omitempty" mapstructure:"student_type" validate:"required"`
+	Faculty     string `json:"faculty,omitempty" mapstructure:"faculty,omitempty" validate:"required"`
+	Department  string `json:"department,omitempty" mapstructure:"department,omitempty" validate:"required"`
+	Field       string `json:"field,omitempty" mapstructure:"field,omitempty" validate:"required"`
+	StudentType string `json:"student_type,omitempty" mapstructure:"student_type,omitempty" validate:"required"`
 }
 
 type Company struct {
-	Company  customtypes.Encrypted[string] `json:"name,omitempty" mapstructure:"name" validate:"omitempty,min=2,max=100"`
-	Address  customtypes.Encrypted[string] `json:"address,omitempty" mapstructure:"address" validate:"omitempty,max=200"`
-	Position customtypes.Encrypted[string] `json:"position,omitempty" mapstructure:"position" validate:"omitempty,max=100"`
+	Company  customtypes.Encrypted[string] `json:"name,omitempty" mapstructure:"name,omitempty" validate:"omitempty,min=2,max=100"`
+	Address  customtypes.Encrypted[string] `json:"address,omitempty" mapstructure:"address,omitempty" validate:"omitempty,max=200"`
+	Position customtypes.Encrypted[string] `json:"position,omitempty" mapstructure:"position,omitempty" validate:"omitempty,max=100"`
 }
 
 type Contact struct {
-	Email    customtypes.Encrypted[string] `json:"email,omitempty" mapstructure:"email" validate:"omitempty,email"`
-	Github   customtypes.Encrypted[string] `json:"github,omitempty" mapstructure:"github" validate:"omitempty,url"`
-	Linkedin customtypes.Encrypted[string] `json:"linkedin,omitempty" mapstructure:"linkedin" validate:"omitempty,url"`
-	Facebook customtypes.Encrypted[string] `json:"facebook,omitempty" mapstructure:"facebook" validate:"omitempty,url"`
-	Phone    customtypes.Encrypted[string] `json:"phone,omitempty" mapstructure:"phone" validate:"omitempty,e164"`
+	Email    customtypes.Encrypted[string] `json:"email,omitempty" mapstructure:"email,squash" validate:"omitempty,email"`
+	Github   customtypes.Encrypted[string] `json:"github,omitempty" mapstructure:"github,squash" validate:"omitempty,url"`
+	Linkedin customtypes.Encrypted[string] `json:"linkedin,omitempty" mapstructure:"linkedin,squash" validate:"omitempty,url"`
+	Facebook customtypes.Encrypted[string] `json:"facebook,omitempty" mapstructure:"facebook,squash" validate:"omitempty,url"`
+	Phone    customtypes.Encrypted[string] `json:"phone,omitempty" mapstructure:"phone,squash" validate:"omitempty,e164"`
 }
 
 type Message struct {

@@ -16,7 +16,7 @@ func AESEncrypt(input reflect.Value) (reflect.Value, error) {
 	}
 
 	// Check if the type is customtype.Encrypted with any type parameter
-	if strings.HasPrefix(input.Type().String(), "customtype.Encrypted[") && input.Kind() == reflect.Struct {
+	if strings.HasPrefix(input.Type().String(), "customtypes.Encrypted[") && input.Kind() == reflect.Struct {
 		// Extract actual value (e.g., `Value` field from a struct)
 		var err error
 		input, err = extractActualValue(input, "Value")
@@ -46,7 +46,7 @@ func AESDecrypt(input reflect.Value, originalType reflect.Kind) (reflect.Value, 
 	}
 
 	// Check if the type is customtype.Encrypted with any type parameter
-	if strings.HasPrefix(input.Type().String(), "customtype.Encrypted[") && input.Kind() == reflect.Struct {
+	if strings.HasPrefix(input.Type().String(), "customtypes.Encrypted[") && input.Kind() == reflect.Struct {
 		// Extract actual value (e.g., `Value` field from a struct)
 		var err error
 		input, err = extractActualValue(input, "Raw")
@@ -72,7 +72,7 @@ func AESEncryptWithHeader(input reflect.Value) (reflect.Value, error) {
 	}
 
 	// Check if the type is customtype.Encrypted with any type parameter
-	if strings.HasPrefix(input.Type().String(), "customtype.Encrypted[") && input.Kind() == reflect.Struct {
+	if strings.HasPrefix(input.Type().String(), "customtypes.Encrypted[") && input.Kind() == reflect.Struct {
 		// Extract actual value (e.g., `Value` field from a struct)
 		var err error
 		input, err = extractActualValue(input, "Value")
@@ -104,7 +104,7 @@ func AESDecryptWithHeader(input reflect.Value) (reflect.Value, error) {
 	}
 
 	// Check if the type is customtype.Encrypted with any type parameter
-	if strings.HasPrefix(input.Type().String(), "customtype.Encrypted[") && input.Kind() == reflect.Struct {
+	if strings.HasPrefix(input.Type().String(), "customtypes.Encrypted[") && input.Kind() == reflect.Struct {
 		// Extract actual value (e.g., `Value` field from a struct)
 		var err error
 		input, err = extractActualValue(input, "Raw")

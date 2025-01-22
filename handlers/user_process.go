@@ -3,7 +3,9 @@ package handlers
 import (
 	"alumni_api/encrypt"
 	"alumni_api/models"
+	"alumni_api/utils"
 	"alumni_api/validators"
+	"encoding/json"
 	"fmt"
 
 	"github.com/gofiber/fiber/v2"
@@ -89,11 +91,23 @@ func UpdateUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		if err := encrypt.EncryptStruct(req, models.UserEncryptField); err != nil {
+		if err := encrypt.EncryptStruct(&req, models.UserEncryptField); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		fmt.Println("after encrypt", req)
+		reqMap, err := utils.StructToMap(req)
+
+		jsonData, err := json.MarshalIndent(reqMap, "", "  ") // MarshalIndent for pretty JSON output
+		if err != nil {
+			fmt.Println("Error marshaling JSON:", err)
+			return nil
+		}
+
+		fmt.Println(string(jsonData))
+
+		fmt.Println("\nmap: ", reqMap)
+
+		// fmt.Println("after encrypt", req)
 
 		// user, err := updateUserByID(c.Context(), driver, id, req, logger)
 		// if err != nil {

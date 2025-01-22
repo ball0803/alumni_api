@@ -6,6 +6,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j/dbtype"
 	"reflect"
+	// "strings"
 	"time"
 )
 
@@ -34,7 +35,7 @@ func MapToStruct(input map[string]interface{}, output interface{}) error {
 	return decoder.Decode(input)
 }
 
-// StructToMap converts a struct to a map, ignoring empty fields
+// StructToMap converts a struct into a map with field names as keys
 func StructToMap(data interface{}) (map[string]interface{}, error) {
 	result := make(map[string]interface{})
 
@@ -53,6 +54,33 @@ func StructToMap(data interface{}) (map[string]interface{}, error) {
 	if err := decoder.Decode(data); err != nil {
 		return nil, fmt.Errorf("failed to decode struct: %w", err)
 	}
+
+	// Now recursively convert fields that are slices of structs
+	for key, value := range result {
+		// If the value is a slice, we need to handle each element in the slice
+		if reflect.ValueOf(value).Kind() == reflect.Slice {
+			// Convert each element in the slice if it's a struct
+			sliceValue := reflect.ValueOf(value)
+			var updatedSlice []interface{}
+			for i := 0; i < sliceValue.Len(); i++ {
+				element := sliceValue.Index(i).Interface()
+				if reflect.TypeOf(element).Kind() == reflect.Struct {
+					// Recursively convert the struct
+					mapElement, err := StructToMap(element)
+					if err != nil {
+						return nil, fmt.Errorf("failed to convert element in slice: %w", err)
+					}
+					updatedSlice = append(updatedSlice, mapElement)
+				} else {
+					// If it's not a struct, just append as is
+					updatedSlice = append(updatedSlice, element)
+				}
+			}
+			result[key] = updatedSlice
+		}
+	}
+
+	ReplaceMapsWithRaw(result)
 
 	// Remove nil or empty maps from `result`
 	for key, value := range result {

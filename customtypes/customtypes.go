@@ -8,8 +8,8 @@ import (
 )
 
 type Encrypted[T any] struct {
-	Raw   []byte
-	Value T
+	Raw   []byte `mapstructure:"Raw,omitempty"`
+	Value T      `mapstructure:"Value,omitempty"`
 }
 
 func (e *Encrypted[T]) UnmarshalJSON(data []byte) error {
@@ -17,6 +17,7 @@ func (e *Encrypted[T]) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &value); err != nil {
 		return fmt.Errorf("invalid value for type %T: %v", e.Value, err)
 	}
+
 	e.Value = value
 	return nil
 }
