@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"alumni_api/models"
+	"alumni_api/validators"
 	"fmt"
 
 	"github.com/gofiber/fiber/v2"
@@ -26,7 +27,7 @@ func GetPostByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 	return func(c *fiber.Ctx) error {
 		postID := c.Params("post_id")
 
-		// if err := validateUUID(postID); err != nil {
+		// if err := validators.UUID(postID); err != nil {
 		// 	return HandleFailWithStatus(c, err, logger)
 		// }
 
@@ -49,7 +50,7 @@ func CreatePost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handle
 
 		var req models.Post
 
-		if err := ValidateRequest(c, &req); err != nil {
+		if err := validators.Request(c, &req); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -67,7 +68,7 @@ func UpdatePostByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 	return func(c *fiber.Ctx) error {
 		postID := c.Params("post_id")
 
-		if err := validateUUID(postID); err != nil {
+		if err := validators.UUID(postID); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -76,13 +77,13 @@ func UpdatePostByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleErrorWithStatus(c, err, logger)
 		}
 
-		if err := ValidateSameUser(c, userID); err != nil {
+		if err := validators.SameUser(c, userID); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
 		var req models.UpdatePostRequest
 
-		if err := ValidateRequest(c, &req); err != nil {
+		if err := validators.Request(c, &req); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -100,7 +101,7 @@ func DeletePostByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 	return func(c *fiber.Ctx) error {
 		postID := c.Params("post_id")
 
-		if err := validateUUID(postID); err != nil {
+		if err := validators.UUID(postID); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -109,7 +110,7 @@ func DeletePostByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleErrorWithStatus(c, err, logger)
 		}
 
-		if err := ValidateSameUser(c, userID); err != nil {
+		if err := validators.SameUser(c, userID); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -127,7 +128,7 @@ func LikePost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler 
 	return func(c *fiber.Ctx) error {
 		postID := c.Params("post_id")
 
-		if err := validateUUID(postID); err != nil {
+		if err := validators.UUID(postID); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -150,7 +151,7 @@ func UnlikePost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handle
 	return func(c *fiber.Ctx) error {
 		postID := c.Params("post_id")
 
-		if err := validateUUID(postID); err != nil {
+		if err := validators.UUID(postID); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -173,7 +174,7 @@ func CommentPost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 	return func(c *fiber.Ctx) error {
 		postID := c.Params("post_id")
 
-		if err := validateUUID(postID); err != nil {
+		if err := validators.UUID(postID); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -184,7 +185,7 @@ func CommentPost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 
 		var req models.CommentRequest
 
-		if err := ValidateRequest(c, &req); err != nil {
+		if err := validators.Request(c, &req); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -202,7 +203,7 @@ func ReplyComment(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Hand
 	return func(c *fiber.Ctx) error {
 		commentID := c.Params("comment_id")
 
-		if err := validateUUID(commentID); err != nil {
+		if err := validators.UUID(commentID); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -213,7 +214,7 @@ func ReplyComment(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Hand
 
 		var req models.CommentRequest
 
-		if err := ValidateRequest(c, &req); err != nil {
+		if err := validators.Request(c, &req); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -231,7 +232,7 @@ func UpdateCommentPost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 	return func(c *fiber.Ctx) error {
 		commentID := c.Params("comment_id")
 
-		if err := validateUUID(commentID); err != nil {
+		if err := validators.UUID(commentID); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -240,13 +241,13 @@ func UpdateCommentPost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleErrorWithStatus(c, err, logger)
 		}
 
-		if err := ValidateSameUser(c, userID); err != nil {
+		if err := validators.SameUser(c, userID); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
 		var req models.CommentRequest
 
-		if err := ValidateRequest(c, &req); err != nil {
+		if err := validators.Request(c, &req); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -264,7 +265,7 @@ func DeleteCommentPost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 	return func(c *fiber.Ctx) error {
 		commentID := c.Params("comment_id")
 
-		if err := validateUUID(commentID); err != nil {
+		if err := validators.UUID(commentID); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -273,7 +274,7 @@ func DeleteCommentPost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleErrorWithStatus(c, err, logger)
 		}
 
-		if err := ValidateSameUser(c, userID); err != nil {
+		if err := validators.SameUser(c, userID); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -291,7 +292,7 @@ func LikeComment(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 	return func(c *fiber.Ctx) error {
 		commentID := c.Params("comment_id")
 
-		if err := validateUUID(commentID); err != nil {
+		if err := validators.UUID(commentID); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -314,7 +315,7 @@ func UnlikeComment(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Han
 	return func(c *fiber.Ctx) error {
 		commentID := c.Params("comment_id")
 
-		if err := validateUUID(commentID); err != nil {
+		if err := validators.UUID(commentID); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 

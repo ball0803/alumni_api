@@ -237,7 +237,7 @@ func fetchUserByID(ctx context.Context, driver neo4j.DriverWithContext, id strin
 		"companies.position",
 	}
 
-	err = encrypt.DecryptMapFields(ret, fieldsToDecrypt, "")
+	err = encrypt.DecryptMaps(ret, fieldsToDecrypt)
 
 	if err != nil {
 		logger.Error("Error decrypting fields: %v", zap.Error(err))

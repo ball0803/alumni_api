@@ -3,6 +3,7 @@ package handlers
 import (
 	"alumni_api/auth"
 	"alumni_api/models"
+	"alumni_api/validators"
 	"github.com/gofiber/fiber/v2"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"go.uber.org/zap"
@@ -12,7 +13,7 @@ func Login(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req models.LoginRequest
 
-		if err := ValidateRequest(c, &req); err != nil {
+		if err := validators.Request(c, &req); err != nil {
 			return HandleFail(c, fiber.StatusBadRequest, "Validation failed", logger, err)
 		}
 
@@ -46,7 +47,7 @@ func Registry(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler 
 	return func(c *fiber.Ctx) error {
 		var req models.ReqistryRequest
 
-		if err := ValidateRequest(c, &req); err != nil {
+		if err := validators.Request(c, &req); err != nil {
 			return HandleFail(c, fiber.StatusBadRequest, "Validation failed", logger, err)
 		}
 

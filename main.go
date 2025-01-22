@@ -6,6 +6,7 @@ import (
 	"alumni_api/logger"
 	"alumni_api/middlewares"
 	"alumni_api/routes"
+	"alumni_api/validators"
 	"context"
 
 	"github.com/gofiber/fiber/v2"
@@ -22,6 +23,7 @@ func main() {
 
 	ctx := context.Background()
 	cfg := config.LoadConfig()
+	validators.Init()
 
 	driver, err := db.ConnectToDB(ctx, cfg.Neo4jURI, cfg.Neo4jUsername, cfg.Neo4jPassword, logger)
 	if err != nil {

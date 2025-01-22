@@ -3,21 +3,12 @@ package handlers
 import (
 	"alumni_api/encrypt"
 	"alumni_api/models"
-	"alumni_api/utils"
-	// "encoding/json"
+	"alumni_api/validators"
 	"fmt"
-	// "net/url"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"go.uber.org/zap"
-)
-
-const (
-	errIDRequired      = "ID is required"
-	errInvalidIDFormat = "Invalid ID format"
-	errUserNotFound    = "No user found with that ID"
-	errRetrievalFailed = "Failed to retrieve user from Neo4j"
 )
 
 // GetUserByID handles the request to get a user by ID from the Neo4j database.
@@ -25,7 +16,7 @@ func GetUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 	return func(c *fiber.Ctx) error {
 		id := c.Params("id")
 
-		// if err := validateUUID(id); err != nil {
+		// if err := validators.UUID(id); err != nil {
 		// 	return HandleFailWithStatus(c, err, logger)
 		// }
 
@@ -38,7 +29,7 @@ func GetUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
 		}
 
-		// if err := ValidateSameUser(c, id); err != nil {
+		// if err := validators.SameUser(c, id); err != nil {
 		// 	return HandleFailWithStatus(c, err, logger)
 		// }
 
@@ -56,7 +47,7 @@ func FindUserByFilter(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.
 	return func(c *fiber.Ctx) error {
 		var req models.UserRequestFilter
 
-		if err := ValidateQuery(c, &req); err != nil {
+		if err := validators.Query(c, &req); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -75,63 +66,34 @@ func UpdateUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 	return func(c *fiber.Ctx) error {
 		var req models.UpdateUserProfileRequest
 
-		// Print the parsed request map
-		// fmt.Println("Parsed request:", out)
+		id := c.Params("id")
 
-		// if err != nil {
-		// 	return HandleErrorWithStatus(c, err, logger)
-		// }
-		//
-		// id := c.Params("id")
-
-		// if err := validateUUID(id); err != nil {
+		// if err := validators.UUID(id); err != nil {
 		// 	return HandleErrorWithStatus(c, err, logger)
 		// }
 
-		// exists, err := userExists(c.Context(), driver, id, logger)
-		// if err != nil {
-		// 	return HandleErrorWithStatus(c, err, logger)
-		// }
-		//
-		// if !exists {
-		// 	return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
-		// }
+		exists, err := userExists(c.Context(), driver, id, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
 
-		// if err := ValidateSameUser(c, id); err != nil {
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
+		}
+
+		// if err := validators.SameUser(c, id); err != nil {
 		// 	return HandleFailWithStatus(c, err, logger)
 		// }
 
-		if err := ValidateRequest(c, &req); err != nil {
+		if err := validators.Request(c, &req); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		reqMap, err := utils.StructToMap(req)
-		if err != nil {
-			return err
-		}
-
-		// fmt.Println(reqMap)
-
-		FieldToEncrypt := []string{
-			"gpax",
-			// "student_info.admit_year",
-			// "student_info.graduate_year",
-			// "student_info.education_level",
-			// "student_info.email",
-			// "student_info.github",
-			// "student_info.linkedin",
-			// "student_info.facebook",
-			// "student_info.phone",
-			// "Companies.Company",
-			// "Companies.Address",
-			// "Companies.Position",
-		}
-
-		if err := encrypt.EncryptMapFields(reqMap, FieldToEncrypt); err != nil {
+		if err := encrypt.EncryptStruct(req, models.UserEncryptField); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		// fmt.Println("after encrypt", reqMap)
+		fmt.Println("after encrypt", req)
 
 		// user, err := updateUserByID(c.Context(), driver, id, req, logger)
 		// if err != nil {
@@ -148,7 +110,7 @@ func DeleteUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 	return func(c *fiber.Ctx) error {
 		id := c.Params("id")
 
-		if err := validateUUID(id); err != nil {
+		if err := validators.UUID(id); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -161,7 +123,7 @@ func DeleteUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
 		}
 
-		if err := ValidateSameUser(c, id); err != nil {
+		if err := validators.SameUser(c, id); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -179,7 +141,7 @@ func GetUserFriendByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 	return func(c *fiber.Ctx) error {
 		id := c.Params("id")
 
-		if err := validateUUID(id); err != nil {
+		if err := validators.UUID(id); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -198,8 +160,8 @@ func GetUserFriendByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 		}
 
 		if len(user) == 0 {
-			c.Locals("message", errUserNotFound)
-			return HandleError(c, fiber.StatusNotFound, errUserNotFound, logger, nil)
+			c.Locals("message", models.ErrUserNotFound)
+			return HandleError(c, fiber.StatusNotFound, models.ErrUserNotFound, logger, nil)
 		}
 
 		successMessage := "User retrieved successfully"
@@ -211,7 +173,7 @@ func CreateUser(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handle
 	return func(c *fiber.Ctx) error {
 		var req models.CreateUserRequest
 
-		if err := ValidateRequest(c, &req); err != nil {
+		if err := validators.Request(c, &req); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -230,7 +192,7 @@ func AddFriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler
 		var req models.UserFriendRequest
 		userID1 := c.Params("id")
 
-		if err := validateUUID(userID1); err != nil {
+		if err := validators.UUID(userID1); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -243,11 +205,11 @@ func AddFriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", userID1), logger, nil)
 		}
 
-		if err := ValidateSameUser(c, userID1); err != nil {
+		if err := validators.SameUser(c, userID1); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		if err := ValidateRequest(c, &req); err != nil {
+		if err := validators.Request(c, &req); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -277,7 +239,7 @@ func Unfriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler 
 		var req models.UserFriendRequest
 		userID1 := c.Params("id")
 
-		if err := validateUUID(userID1); err != nil {
+		if err := validators.UUID(userID1); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -290,11 +252,11 @@ func Unfriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler 
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", userID1), logger, nil)
 		}
 
-		if err := ValidateSameUser(c, userID1); err != nil {
+		if err := validators.SameUser(c, userID1); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		if err := ValidateRequest(c, &req); err != nil {
+		if err := validators.Request(c, &req); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -325,7 +287,7 @@ func AddStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 
 		id := c.Params("id")
 
-		if err := validateUUID(id); err != nil {
+		if err := validators.UUID(id); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -338,11 +300,11 @@ func AddStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
 		}
 
-		if err := ValidateSameUser(c, id); err != nil {
+		if err := validators.SameUser(c, id); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		if err := ValidateRequest(c, &req); err != nil {
+		if err := validators.Request(c, &req); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -362,7 +324,7 @@ func UpdateStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 
 		id := c.Params("id")
 
-		if err := validateUUID(id); err != nil {
+		if err := validators.UUID(id); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -375,11 +337,11 @@ func UpdateStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
 		}
 
-		if err := ValidateSameUser(c, id); err != nil {
+		if err := validators.SameUser(c, id); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		if err := ValidateRequest(c, &req); err != nil {
+		if err := validators.Request(c, &req); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -397,7 +359,7 @@ func DeleteStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 	return func(c *fiber.Ctx) error {
 		id := c.Params("id")
 
-		if err := validateUUID(id); err != nil {
+		if err := validators.UUID(id); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -410,7 +372,7 @@ func DeleteStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
 		}
 
-		if err := ValidateSameUser(c, id); err != nil {
+		if err := validators.SameUser(c, id); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -430,11 +392,11 @@ func AddUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 
 		id := c.Params("id")
 
-		if err := validateUUID(id); err != nil {
+		if err := validators.UUID(id); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		if err := ValidateRequest(c, &req); err != nil {
+		if err := validators.Request(c, &req); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -447,7 +409,7 @@ func AddUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
 		}
 
-		if err := ValidateSameUser(c, id); err != nil {
+		if err := validators.SameUser(c, id); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -465,13 +427,13 @@ func UpdateUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 	return func(c *fiber.Ctx) error {
 		var req models.UserCompanyUpdateRequest
 
-		if err := ValidateRequest(c, &req); err != nil {
+		if err := validators.Request(c, &req); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
 		userID := c.Params("user_id")
 		companyID := c.Params("company_id")
-		if err := validateUUIDs(userID, companyID); err != nil {
+		if err := validators.MultipleUUID(userID, companyID); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -484,7 +446,7 @@ func UpdateUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", userID), logger, nil)
 		}
 
-		if err := ValidateSameUser(c, userID); err != nil {
+		if err := validators.SameUser(c, userID); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -502,7 +464,7 @@ func DeleteUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 	return func(c *fiber.Ctx) error {
 		userID := c.Params("user_id")
 		companyID := c.Params("company_id")
-		if err := validateUUIDs(userID, companyID); err != nil {
+		if err := validators.MultipleUUID(userID, companyID); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -515,7 +477,7 @@ func DeleteUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", userID), logger, nil)
 		}
 
-		if err := ValidateSameUser(c, userID); err != nil {
+		if err := validators.SameUser(c, userID); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
