@@ -2,6 +2,7 @@ package encrypt
 
 import (
 	"alumni_api/config"
+	"alumni_api/utils"
 	"reflect"
 	"strings"
 )
@@ -101,6 +102,10 @@ func AESEncryptWithHeader(input reflect.Value) (reflect.Value, error) {
 func AESDecryptWithHeader(input reflect.Value) (reflect.Value, error) {
 	if input.Kind() == reflect.Ptr {
 		input = input.Elem()
+	}
+
+	if !utils.IsSliceOfByte(input) {
+		return input, nil
 	}
 
 	// Check if the type is customtype.Encrypted with any type parameter

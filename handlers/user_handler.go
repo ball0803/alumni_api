@@ -314,22 +314,28 @@ func fetchUserByFilter(ctx context.Context, driver neo4j.DriverWithContext, filt
 	return users, nil
 }
 
-func updateUserByID(ctx context.Context, driver neo4j.DriverWithContext, id string, updatedData models.UpdateUserProfileRequest, logger *zap.Logger) (models.UserProfile, error) {
+func updateUserByID(
+	ctx context.Context,
+	driver neo4j.DriverWithContext,
+	id string,
+	updatedData models.UpdateUserProfileRequest,
+	logger *zap.Logger,
+) (map[string]interface{}, error) {
+	// Open a new session
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
 	})
 	defer session.Close(ctx)
 
+	// Convert the struct to a map
 	properties, err := utils.StructToMap(updatedData)
 	if err != nil {
 		logger.Error("Failed to convert struct to map", zap.Error(err))
-		return models.UserProfile{}, fiber.NewError(http.StatusInternalServerError, "Internal server error")
+		return nil, fiber.NewError(http.StatusInternalServerError, "Internal server error")
 	}
 
-	// fmt.Println(properties)
-
-	// Execute the transaction with the write operation
+	// Execute the transaction with a write operation
 	updatedUser, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
 		query := `
 			MATCH (u:UserProfile {user_id: $id})
@@ -337,38 +343,51 @@ func updateUserByID(ctx context.Context, driver neo4j.DriverWithContext, id stri
 			RETURN u
 		`
 
+		// Run the query
 		result, err := tx.Run(ctx, query, map[string]interface{}{
 			"id":         id,
 			"properties": properties,
 		})
-
 		if err != nil {
-			logger.Error("Failed to update user profile", zap.Error(err))
+			logger.Error("Failed to execute query to update user profile", zap.Error(err))
 			return nil, fiber.NewError(http.StatusInternalServerError, "Failed to update user profile")
 		}
 
+		// Get the single result
 		record, err := result.Single(ctx)
 		if err != nil {
-			logger.Warn("No user found with that ID")
-			return nil, fiber.NewError(fiber.StatusNotFound, "No user found with that ID")
+			logger.Error("Error retrieving record from query result", zap.Error(err))
+			return nil, fiber.NewError(http.StatusInternalServerError, "Error retrieving user data")
 		}
 
-		userNode, _ := record.Get("u")
-		props := userNode.(neo4j.Node).Props
-		var updatedUser models.UserProfile
-		if err := utils.MapToStruct(props, &updatedUser); err != nil {
-			logger.Error("Error decoding updated user properties", zap.Error(err))
-			return nil, fiber.NewError(http.StatusInternalServerError, "Failed to decode updated user profile")
+		// Extract properties from the node
+		userNode, found := record.Get("u")
+		if !found {
+			logger.Error("Failed to retrieve user node from query result")
+			return nil, fiber.NewError(http.StatusInternalServerError, "Failed to retrieve user data")
 		}
 
-		return updatedUser, nil
+		node, ok := userNode.(neo4j.Node)
+		if !ok {
+			logger.Error("Query result is not a neo4j.Node", zap.Any("result", userNode))
+			return nil, fiber.NewError(http.StatusInternalServerError, "Invalid data format")
+		}
+
+		return node.Props, nil
 	})
 
 	if err != nil {
-		return models.UserProfile{}, err
+		return nil, err
 	}
 
-	return updatedUser.(models.UserProfile), nil
+	// Type assertion to map[string]interface{}
+	props, ok := updatedUser.(map[string]interface{})
+	if !ok {
+		logger.Error("Unexpected data type returned from transaction", zap.Any("data", updatedUser))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Invalid user data returned")
+	}
+
+	return props, nil
 }
 
 func deleteUserByID(ctx context.Context, driver neo4j.DriverWithContext, userID string, logger *zap.Logger) error {

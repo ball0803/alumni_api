@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 )
@@ -178,7 +177,6 @@ func ReplaceMapsWithRaw(input interface{}) interface{} {
 		// fmt.Println(val)
 		for _, key := range val.MapKeys() {
 			mapValue := val.MapIndex(key).Elem()
-			fmt.Println(key, mapValue, mapValue.Kind())
 			// Check if this is a map with "Raw" and "Value" fields
 			if isRawValueMap(mapValue) {
 				// Replace the map with the "Raw" field value directly

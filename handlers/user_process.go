@@ -3,9 +3,9 @@ package handlers
 import (
 	"alumni_api/encrypt"
 	"alumni_api/models"
-	"alumni_api/utils"
+	// "alumni_api/utils"
 	"alumni_api/validators"
-	"encoding/json"
+	// "encoding/json"
 	"fmt"
 
 	"github.com/gofiber/fiber/v2"
@@ -95,28 +95,17 @@ func UpdateUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		reqMap, err := utils.StructToMap(req)
-
-		jsonData, err := json.MarshalIndent(reqMap, "", "  ") // MarshalIndent for pretty JSON output
+		user, err := updateUserByID(c.Context(), driver, id, req, logger)
 		if err != nil {
-			fmt.Println("Error marshaling JSON:", err)
-			return nil
+			return HandleError(c, fiber.StatusInternalServerError, "Failed to Update users", logger, err)
 		}
 
-		fmt.Println(string(jsonData))
+		if err := encrypt.DecryptMaps(user, models.StudentInfoDecryptField); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
 
-		fmt.Println("\nmap: ", reqMap)
-
-		// fmt.Println("after encrypt", req)
-
-		// user, err := updateUserByID(c.Context(), driver, id, req, logger)
-		// if err != nil {
-		// 	return HandleError(c, fiber.StatusInternalServerError, "Failed to Update users", logger, err)
-		// }
-		//
-		// successMessage := "User profile updated successfully"
-		// return HandleSuccess(c, fiber.StatusOK, successMessage, user, logger)
-		return nil
+		successMessage := "User profile updated successfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, user, logger)
 	}
 }
 

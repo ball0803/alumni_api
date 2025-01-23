@@ -25,7 +25,7 @@ type UserProfile struct {
 type StudentInfo struct {
 	CollegeInfo    CollegeInfo                    `json:"college_info,omitempty" mapstructure:"college_info,squash" validate:"omitempty"`
 	EducationLevel string                         `json:"education_level,omitempty" mapstructure:"education_level,omitempty" validate:"omitempty"`
-	AdmitYear      customtypes.Encrypted[int16]   `json:"admit_year,omitempty" mapstructure:"admit_year,omitempty" validate:"omitempty,gte=1950,lte=2100"`
+	AdmitYear      customtypes.Encrypted[int16]   `json:"admit_year,omitempty" mapstructure:"admit_year,omitempty" validate:"omitempty,gte=2510,lte=2600"`
 	GraduateYear   customtypes.Encrypted[int16]   `json:"graduate_year,omitempty" mapstructure:"graduate_year,omitempty" validate:"omitempty,gte=2530"`
 	GPAX           customtypes.Encrypted[float32] `json:"gpax,omitempty" mapstructure:"gpax,omitempty" validate:"omitempty,gte=0.0,lte=4.0"`
 }
