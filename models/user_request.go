@@ -1,6 +1,7 @@
 package models
 
 import (
+	"alumni_api/customtypes"
 	"time"
 )
 
@@ -26,7 +27,7 @@ type UpdateUserProfileRequest struct {
 }
 
 type CreateUserRequest struct {
-	UserID         string    `json:"user_id,omitempty" mapstructure:"user_id" validate:"required,uuid4"`
+	UserID         string    `json:"user_id,omitempty" mapstructure:"user_id" validate:"omitempty,uuid4"`
 	Username       string    `json:"username,omitempty" mapstructure:"username" validate:"required,min=3,max=50"`
 	Password       string    `json:"user_password,omitempty" mapstructure:"user_password" validate:"required,min=8"`
 	FirstName      string    `json:"first_name,omitempty" mapstructure:"first_name" validate:"required,min=2,max=50"`
@@ -48,17 +49,10 @@ type UserRequestFilter struct {
 	Field       string `json:"field,omitempty" mapstructure:"field" validate:"omitempty"`
 }
 
-type StudentInfoRequest struct {
-	Faculty     string `json:"faculty,omitempty" mapstructure:"faculty" validate:"required"`
-	Department  string `json:"department,omitempty" mapstructure:"department" validate:"required"`
-	Field       string `json:"field,omitempty" mapstructure:"field" validate:"required"`
-	StudentType string `json:"studentType,omitempty" mapstructure:"studentType" validate:"required"`
-}
-
 type UserRequestCompany struct {
 	Companies []Company `json:"companies" validate:"required"`
 }
 
 type UserCompanyUpdateRequest struct {
-	Position string `json:"position,omitempty" mapstructure:"position" validate:"required,max=100"`
+	Position customtypes.Encrypted[string] `json:"position,omitempty" mapstructure:"position,omitempty" validate:"omitempty,max=100"`
 }

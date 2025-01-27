@@ -9,35 +9,33 @@ import (
 )
 
 func UserRoutes(group fiber.Router, driver neo4j.DriverWithContext, logger *zap.Logger) {
+
+	// Public routes
 	user := group.Group("/users")
-
-	user.Use(middlewares.JWTMiddleware(logger))
-
-	user.Get("/:id", handlers.GetUserByID(driver, logger))
-
-	user.Get("", handlers.FindUserByFilter(driver, logger))
-
 	user.Post("", handlers.CreateUser(driver, logger))
 
-	user.Put("/:id", handlers.UpdateUserByID(driver, logger))
+	// Authenticated routes
+	userWithAuth := group.Group("/users")
+	userWithAuth.Use(middlewares.JWTMiddleware(logger))
 
-	user.Delete("/:id", handlers.DeleteUserByID(driver, logger))
+	// User endpoints
+	userWithAuth.Get("/:id", handlers.GetUserByID(driver, logger))
+	userWithAuth.Get("", handlers.FindUserByFilter(driver, logger))
+	userWithAuth.Put("/:id", handlers.UpdateUserByID(driver, logger))
+	userWithAuth.Delete("/:id", handlers.DeleteUserByID(driver, logger))
 
-	user.Post("/:id/companies", handlers.AddUserCompany(driver, logger))
+	// Companies endpoints
+	userWithAuth.Post("/:id/companies", handlers.AddUserCompany(driver, logger))
+	userWithAuth.Put("/:user_id/companies/:company_id", handlers.UpdateUserCompany(driver, logger))
+	userWithAuth.Delete("/:user_id/companies/:company_id", handlers.DeleteUserCompany(driver, logger))
 
-	user.Put("/:user_id/companies/:company_id", handlers.UpdateUserCompany(driver, logger))
+	// Student info endpoints
+	userWithAuth.Post("/:id/student_info", handlers.AddStudentInfo(driver, logger))
+	userWithAuth.Put("/:id/student_info", handlers.UpdateStudentInfo(driver, logger))
+	userWithAuth.Delete("/:id/student_info", handlers.DeleteStudentInfo(driver, logger))
 
-	user.Delete("/:user_id/companies/:company_id", handlers.DeleteUserCompany(driver, logger))
-
-	user.Post("/:id/student_info", handlers.AddStudentInfo(driver, logger))
-
-	user.Put("/:id/student_info", handlers.UpdateStudentInfo(driver, logger))
-
-	user.Delete("/:id/student_info", handlers.DeleteStudentInfo(driver, logger))
-
-	user.Get("/:id/friends", handlers.GetUserFriendByID(driver, logger))
-
-	user.Post("/:id/friends", handlers.AddFriend(driver, logger))
-
-	user.Delete("/:id/friends", handlers.Unfriend(driver, logger))
+	// Friends endpoints
+	userWithAuth.Get("/:id/friends", handlers.GetUserFriendByID(driver, logger))
+	userWithAuth.Post("/:id/friends", handlers.AddFriend(driver, logger))
+	userWithAuth.Delete("/:id/friends", handlers.Unfriend(driver, logger))
 }

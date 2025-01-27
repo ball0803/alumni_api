@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"alumni_api/models"
+	"alumni_api/process"
 	"alumni_api/validators"
 	"fmt"
 
@@ -13,7 +14,7 @@ import (
 func GetAllPost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 
-		posts, err := getAllPosts(c.Context(), driver, logger)
+		posts, err := process.GetAllPosts(c.Context(), driver, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -31,7 +32,7 @@ func GetPostByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 		// 	return HandleFailWithStatus(c, err, logger)
 		// }
 
-		posts, err := getPostByID(c.Context(), driver, postID, logger)
+		posts, err := process.GetPostByID(c.Context(), driver, postID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -54,7 +55,7 @@ func CreatePost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handle
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		data, err := createPost(c.Context(), driver, claim.UserID, req, logger)
+		data, err := process.CreatePost(c.Context(), driver, claim.UserID, req, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -72,7 +73,7 @@ func UpdatePostByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		userID, err := getPostUserID(c.Context(), driver, postID, logger)
+		userID, err := process.GetPostUserID(c.Context(), driver, postID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -87,7 +88,7 @@ func UpdatePostByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err = updatePostByID(c.Context(), driver, postID, req, logger)
+		err = process.UpdatePostByID(c.Context(), driver, postID, req, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -105,7 +106,7 @@ func DeletePostByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		userID, err := getPostUserID(c.Context(), driver, postID, logger)
+		userID, err := process.GetPostUserID(c.Context(), driver, postID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -114,7 +115,7 @@ func DeletePostByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err = deletePostByID(c.Context(), driver, postID, logger)
+		err = process.DeletePostByID(c.Context(), driver, postID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -137,7 +138,7 @@ func LikePost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler 
 			return HandleFail(c, fiber.StatusUnauthorized, "Unauthorized claim", logger, nil)
 		}
 
-		err := likePost(c.Context(), driver, claim.UserID, postID, logger)
+		err := process.LikePost(c.Context(), driver, claim.UserID, postID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -160,7 +161,7 @@ func UnlikePost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handle
 			return HandleFail(c, fiber.StatusUnauthorized, "Unauthorized claim", logger, nil)
 		}
 
-		err := unlikePost(c.Context(), driver, claim.UserID, postID, logger)
+		err := process.UnlikePost(c.Context(), driver, claim.UserID, postID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -189,7 +190,7 @@ func CommentPost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err := commentPost(c.Context(), driver, claim.UserID, postID, req.Comment, logger)
+		err := process.CommentPost(c.Context(), driver, claim.UserID, postID, req.Comment, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -218,7 +219,7 @@ func ReplyComment(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Hand
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err := replyComment(c.Context(), driver, claim.UserID, commentID, req.Comment, logger)
+		err := process.ReplyComment(c.Context(), driver, claim.UserID, commentID, req.Comment, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -236,7 +237,7 @@ func UpdateCommentPost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		userID, err := getCommentUserID(c.Context(), driver, commentID, logger)
+		userID, err := process.GetCommentUserID(c.Context(), driver, commentID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -251,7 +252,7 @@ func UpdateCommentPost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err = updateCommentPost(c.Context(), driver, commentID, req.Comment, logger)
+		err = process.UpdateCommentPost(c.Context(), driver, commentID, req.Comment, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -269,7 +270,7 @@ func DeleteCommentPost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		userID, err := getCommentUserID(c.Context(), driver, commentID, logger)
+		userID, err := process.GetCommentUserID(c.Context(), driver, commentID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -278,7 +279,7 @@ func DeleteCommentPost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err = deleteCommentPost(c.Context(), driver, commentID, logger)
+		err = process.DeleteCommentPost(c.Context(), driver, commentID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -301,7 +302,7 @@ func LikeComment(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 			return HandleFail(c, fiber.StatusUnauthorized, "Unauthorized claim", logger, nil)
 		}
 
-		err := likeComment(c.Context(), driver, claim.UserID, commentID, logger)
+		err := process.LikeComment(c.Context(), driver, claim.UserID, commentID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -324,7 +325,7 @@ func UnlikeComment(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Han
 			return HandleFail(c, fiber.StatusUnauthorized, "Unauthorized claim", logger, nil)
 		}
 
-		err := unlikeComment(c.Context(), driver, claim.UserID, commentID, logger)
+		err := process.UnlikeComment(c.Context(), driver, claim.UserID, commentID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}

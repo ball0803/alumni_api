@@ -3,6 +3,7 @@ package handlers
 import (
 	"alumni_api/auth"
 	"alumni_api/models"
+	"alumni_api/process"
 	"alumni_api/validators"
 	"github.com/gofiber/fiber/v2"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
@@ -17,7 +18,7 @@ func Login(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 			return HandleFail(c, fiber.StatusBadRequest, "Validation failed", logger, err)
 		}
 
-		user, err := login(c.Context(), driver, req.Username, logger)
+		user, err := process.Login(c.Context(), driver, req.Username, logger)
 		if err != nil {
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}
@@ -51,7 +52,7 @@ func Registry(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler 
 			return HandleFail(c, fiber.StatusBadRequest, "Validation failed", logger, err)
 		}
 
-		user, err := registry(c.Context(), driver, req, logger)
+		user, err := process.Registry(c.Context(), driver, req, logger)
 		if err != nil {
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}

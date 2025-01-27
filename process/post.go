@@ -1,4 +1,4 @@
-package handlers
+package process
 
 import (
 	"alumni_api/models"
@@ -13,7 +13,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func getAllPosts(ctx context.Context, driver neo4j.DriverWithContext, logger *zap.Logger) ([]map[string]interface{}, error) {
+func GetAllPosts(ctx context.Context, driver neo4j.DriverWithContext, logger *zap.Logger) ([]map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeRead,
@@ -69,7 +69,7 @@ func getAllPosts(ctx context.Context, driver neo4j.DriverWithContext, logger *za
 	return posts, nil
 }
 
-func getPostByID(ctx context.Context, driver neo4j.DriverWithContext, postID string, logger *zap.Logger) (map[string]interface{}, error) {
+func GetPostByID(ctx context.Context, driver neo4j.DriverWithContext, postID string, logger *zap.Logger) (map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeRead,
@@ -175,7 +175,7 @@ func getPostByID(ctx context.Context, driver neo4j.DriverWithContext, postID str
 	return postData, nil
 }
 
-func createPost(ctx context.Context, driver neo4j.DriverWithContext, userID string, post models.Post, logger *zap.Logger) (map[string]interface{}, error) {
+func CreatePost(ctx context.Context, driver neo4j.DriverWithContext, userID string, post models.Post, logger *zap.Logger) (map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -226,7 +226,7 @@ func createPost(ctx context.Context, driver neo4j.DriverWithContext, userID stri
 	return ret, nil
 }
 
-func updatePostByID(ctx context.Context, driver neo4j.DriverWithContext, postID string, updatedData models.UpdatePostRequest, logger *zap.Logger) error {
+func UpdatePostByID(ctx context.Context, driver neo4j.DriverWithContext, postID string, updatedData models.UpdatePostRequest, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -259,7 +259,7 @@ func updatePostByID(ctx context.Context, driver neo4j.DriverWithContext, postID 
 	return nil
 }
 
-func deletePostByID(ctx context.Context, driver neo4j.DriverWithContext, postID string, logger *zap.Logger) error {
+func DeletePostByID(ctx context.Context, driver neo4j.DriverWithContext, postID string, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -295,7 +295,7 @@ func deletePostByID(ctx context.Context, driver neo4j.DriverWithContext, postID 
 	return nil
 }
 
-func likePost(ctx context.Context, driver neo4j.DriverWithContext, userID, postID string, logger *zap.Logger) error {
+func LikePost(ctx context.Context, driver neo4j.DriverWithContext, userID, postID string, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -322,7 +322,7 @@ func likePost(ctx context.Context, driver neo4j.DriverWithContext, userID, postI
 	return nil
 }
 
-func unlikePost(ctx context.Context, driver neo4j.DriverWithContext, userID, postID string, logger *zap.Logger) error {
+func UnlikePost(ctx context.Context, driver neo4j.DriverWithContext, userID, postID string, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -348,7 +348,7 @@ func unlikePost(ctx context.Context, driver neo4j.DriverWithContext, userID, pos
 	return nil
 }
 
-func commentPost(ctx context.Context, driver neo4j.DriverWithContext, userID, postID, comment string, logger *zap.Logger) error {
+func CommentPost(ctx context.Context, driver neo4j.DriverWithContext, userID, postID, comment string, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -383,7 +383,7 @@ func commentPost(ctx context.Context, driver neo4j.DriverWithContext, userID, po
 	return nil
 }
 
-func replyComment(ctx context.Context, driver neo4j.DriverWithContext, userID, commentID, comment string, logger *zap.Logger) error {
+func ReplyComment(ctx context.Context, driver neo4j.DriverWithContext, userID, commentID, comment string, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -418,7 +418,7 @@ func replyComment(ctx context.Context, driver neo4j.DriverWithContext, userID, c
 	return nil
 }
 
-func updateCommentPost(ctx context.Context, driver neo4j.DriverWithContext, commentID, comment string, logger *zap.Logger) error {
+func UpdateCommentPost(ctx context.Context, driver neo4j.DriverWithContext, commentID, comment string, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -445,7 +445,7 @@ func updateCommentPost(ctx context.Context, driver neo4j.DriverWithContext, comm
 	return nil
 }
 
-func deleteCommentPost(ctx context.Context, driver neo4j.DriverWithContext, commentID string, logger *zap.Logger) error {
+func DeleteCommentPost(ctx context.Context, driver neo4j.DriverWithContext, commentID string, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -470,7 +470,7 @@ func deleteCommentPost(ctx context.Context, driver neo4j.DriverWithContext, comm
 	return nil
 }
 
-func likeComment(ctx context.Context, driver neo4j.DriverWithContext, userID, commentID string, logger *zap.Logger) error {
+func LikeComment(ctx context.Context, driver neo4j.DriverWithContext, userID, commentID string, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -497,7 +497,7 @@ func likeComment(ctx context.Context, driver neo4j.DriverWithContext, userID, co
 	return nil
 }
 
-func unlikeComment(ctx context.Context, driver neo4j.DriverWithContext, userID, commentID string, logger *zap.Logger) error {
+func UnlikeComment(ctx context.Context, driver neo4j.DriverWithContext, userID, commentID string, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -523,7 +523,7 @@ func unlikeComment(ctx context.Context, driver neo4j.DriverWithContext, userID, 
 	return nil
 }
 
-func getPostUserID(ctx context.Context, driver neo4j.DriverWithContext, postID string, logger *zap.Logger) (string, error) {
+func GetPostUserID(ctx context.Context, driver neo4j.DriverWithContext, postID string, logger *zap.Logger) (string, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeRead,
@@ -568,7 +568,7 @@ func getPostUserID(ctx context.Context, driver neo4j.DriverWithContext, postID s
 	return userIDStr, nil
 }
 
-func getCommentUserID(ctx context.Context, driver neo4j.DriverWithContext, commentID string, logger *zap.Logger) (string, error) {
+func GetCommentUserID(ctx context.Context, driver neo4j.DriverWithContext, commentID string, logger *zap.Logger) (string, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeRead,

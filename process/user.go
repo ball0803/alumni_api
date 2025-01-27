@@ -1,7 +1,6 @@
-package handlers
+package process
 
 import (
-	"alumni_api/encrypt"
 	"alumni_api/models"
 	"alumni_api/utils"
 	"context"
@@ -17,7 +16,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func createUser(ctx context.Context, driver neo4j.DriverWithContext, user models.CreateUserRequest, logger *zap.Logger) (map[string]interface{}, error) {
+func CreateUser(ctx context.Context, driver neo4j.DriverWithContext, user models.CreateUserRequest, logger *zap.Logger) (map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -99,7 +98,7 @@ func createUser(ctx context.Context, driver neo4j.DriverWithContext, user models
 	return ret, nil
 }
 
-func getUserFriendByID(ctx context.Context, driver neo4j.DriverWithContext, id string, logger *zap.Logger) ([]map[string]interface{}, error) {
+func GetUserFriendByID(ctx context.Context, driver neo4j.DriverWithContext, id string, logger *zap.Logger) ([]map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeRead,
@@ -156,7 +155,7 @@ func getUserFriendByID(ctx context.Context, driver neo4j.DriverWithContext, id s
 	return friends, nil
 }
 
-func fetchUserByID(ctx context.Context, driver neo4j.DriverWithContext, id string, logger *zap.Logger) (map[string]interface{}, error) {
+func FetchUserByID(ctx context.Context, driver neo4j.DriverWithContext, id string, logger *zap.Logger) (map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{DatabaseName: "neo4j", AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
@@ -222,32 +221,10 @@ func fetchUserByID(ctx context.Context, driver neo4j.DriverWithContext, id strin
 		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to parse date fields")
 	}
 
-	fieldsToDecrypt := []string{
-		"student_info.gpax",
-		"student_info.admit_year",
-		"student_info.graduate_year",
-		"student_info.education_level",
-		"contact_info.email",
-		"contact_info.github",
-		"contact_info.linkedin",
-		"contact_info.facebook",
-		"contact_info.phone",
-		"companies.company",
-		"companies.address",
-		"companies.position",
-	}
-
-	err = encrypt.DecryptMaps(ret, fieldsToDecrypt)
-
-	if err != nil {
-		logger.Error("Error decrypting fields: %v", zap.Error(err))
-		return nil, fiber.NewError(http.StatusInternalServerError, "Failde to Decrypt Data")
-	}
-
 	return ret, nil
 }
 
-func fetchUserByFilter(ctx context.Context, driver neo4j.DriverWithContext, filter models.UserRequestFilter, logger *zap.Logger) ([]map[string]interface{}, error) {
+func FetchUserByFilter(ctx context.Context, driver neo4j.DriverWithContext, filter models.UserRequestFilter, logger *zap.Logger) ([]map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeRead,
@@ -314,7 +291,7 @@ func fetchUserByFilter(ctx context.Context, driver neo4j.DriverWithContext, filt
 	return users, nil
 }
 
-func updateUserByID(
+func UpdateUserByID(
 	ctx context.Context,
 	driver neo4j.DriverWithContext,
 	id string,
@@ -390,7 +367,7 @@ func updateUserByID(
 	return props, nil
 }
 
-func deleteUserByID(ctx context.Context, driver neo4j.DriverWithContext, userID string, logger *zap.Logger) error {
+func DeleteUserByID(ctx context.Context, driver neo4j.DriverWithContext, userID string, logger *zap.Logger) error {
 	// Start a write transaction
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
@@ -421,7 +398,7 @@ func deleteUserByID(ctx context.Context, driver neo4j.DriverWithContext, userID 
 	return nil
 }
 
-func addFriend(ctx context.Context, driver neo4j.DriverWithContext, userID1 string, userID2 string, logger *zap.Logger) error {
+func AddFriend(ctx context.Context, driver neo4j.DriverWithContext, userID1 string, userID2 string, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -464,7 +441,7 @@ func addFriend(ctx context.Context, driver neo4j.DriverWithContext, userID1 stri
 	return nil
 }
 
-func unfriend(ctx context.Context, driver neo4j.DriverWithContext, userID1 string, userID2 string, logger *zap.Logger) error {
+func Unfriend(ctx context.Context, driver neo4j.DriverWithContext, userID1 string, userID2 string, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -502,7 +479,7 @@ func unfriend(ctx context.Context, driver neo4j.DriverWithContext, userID1 strin
 	return nil
 }
 
-func addStudentInfo(ctx context.Context, driver neo4j.DriverWithContext, id string, student_info models.StudentInfoRequest, logger *zap.Logger) error {
+func AddStudentInfo(ctx context.Context, driver neo4j.DriverWithContext, id string, college_info models.CollegeInfo, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -539,10 +516,10 @@ func addStudentInfo(ctx context.Context, driver neo4j.DriverWithContext, id stri
 
 	params := map[string]interface{}{
 		"userID":      id,
-		"faculty":     student_info.Faculty,
-		"department":  student_info.Department,
-		"field":       student_info.Field,
-		"studentType": student_info.StudentType,
+		"faculty":     college_info.Faculty,
+		"department":  college_info.Department,
+		"field":       college_info.Field,
+		"studentType": college_info.StudentType,
 	}
 
 	_, err2 := session.Run(ctx, query, params)
@@ -555,7 +532,7 @@ func addStudentInfo(ctx context.Context, driver neo4j.DriverWithContext, id stri
 
 }
 
-func updateStudentInfo(ctx context.Context, driver neo4j.DriverWithContext, id string, student_info models.StudentInfoRequest, logger *zap.Logger) error {
+func UpdateStudentInfo(ctx context.Context, driver neo4j.DriverWithContext, id string, college_info models.CollegeInfo, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -599,10 +576,10 @@ func updateStudentInfo(ctx context.Context, driver neo4j.DriverWithContext, id s
 
 	params := map[string]interface{}{
 		"userID":      id,
-		"faculty":     student_info.Faculty,
-		"department":  student_info.Department,
-		"field":       student_info.Field,
-		"studentType": student_info.StudentType,
+		"faculty":     college_info.Faculty,
+		"department":  college_info.Department,
+		"field":       college_info.Field,
+		"studentType": college_info.StudentType,
 	}
 
 	_, err = tx.Run(ctx, query, params)
@@ -621,7 +598,7 @@ func updateStudentInfo(ctx context.Context, driver neo4j.DriverWithContext, id s
 	return nil
 }
 
-func deleteStudentInfo(ctx context.Context, driver neo4j.DriverWithContext, id string, logger *zap.Logger) error {
+func DeleteStudentInfo(ctx context.Context, driver neo4j.DriverWithContext, id string, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -675,7 +652,7 @@ func deleteStudentInfo(ctx context.Context, driver neo4j.DriverWithContext, id s
 	return nil
 }
 
-func addUserCompany(ctx context.Context, driver neo4j.DriverWithContext, id string, companies models.UserRequestCompany, logger *zap.Logger) error {
+func AddUserCompany(ctx context.Context, driver neo4j.DriverWithContext, id string, companies models.UserRequestCompany, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -727,7 +704,7 @@ func addUserCompany(ctx context.Context, driver neo4j.DriverWithContext, id stri
 	return nil
 }
 
-func updateUserCompany(ctx context.Context, driver neo4j.DriverWithContext, userID, companyID string, company models.UserCompanyUpdateRequest, logger *zap.Logger) error {
+func UpdateUserCompany(ctx context.Context, driver neo4j.DriverWithContext, userID, companyID string, company models.UserCompanyUpdateRequest, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -780,7 +757,7 @@ func updateUserCompany(ctx context.Context, driver neo4j.DriverWithContext, user
 	return nil
 }
 
-func deleteUserCompany(ctx context.Context, driver neo4j.DriverWithContext, userID, companyID string, logger *zap.Logger) error {
+func DeleteUserCompany(ctx context.Context, driver neo4j.DriverWithContext, userID, companyID string, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -831,7 +808,7 @@ func deleteUserCompany(ctx context.Context, driver neo4j.DriverWithContext, user
 	return nil
 }
 
-func userExists(ctx context.Context, driver neo4j.DriverWithContext, id string, logger *zap.Logger) (bool, error) {
+func UserExists(ctx context.Context, driver neo4j.DriverWithContext, id string, logger *zap.Logger) (bool, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{DatabaseName: "neo4j", AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 

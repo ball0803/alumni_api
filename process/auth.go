@@ -1,4 +1,4 @@
-package handlers
+package process
 
 import (
 	"alumni_api/auth"
@@ -11,7 +11,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func login(ctx context.Context, driver neo4j.DriverWithContext, username string, logger *zap.Logger) (models.LoginResponse, error) {
+func Login(ctx context.Context, driver neo4j.DriverWithContext, username string, logger *zap.Logger) (models.LoginResponse, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -48,7 +48,7 @@ func login(ctx context.Context, driver neo4j.DriverWithContext, username string,
 	return res, nil
 }
 
-func registry(ctx context.Context, driver neo4j.DriverWithContext, user models.ReqistryRequest, logger *zap.Logger) (map[string]interface{}, error) {
+func Registry(ctx context.Context, driver neo4j.DriverWithContext, user models.ReqistryRequest, logger *zap.Logger) (map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,

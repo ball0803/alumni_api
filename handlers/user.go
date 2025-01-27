@@ -3,6 +3,7 @@ package handlers
 import (
 	"alumni_api/encrypt"
 	"alumni_api/models"
+	"alumni_api/process"
 	// "alumni_api/utils"
 	"alumni_api/validators"
 	// "encoding/json"
@@ -22,7 +23,7 @@ func GetUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 		// 	return HandleFailWithStatus(c, err, logger)
 		// }
 
-		exists, err := userExists(c.Context(), driver, id, logger)
+		exists, err := process.UserExists(c.Context(), driver, id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -35,9 +36,13 @@ func GetUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 		// 	return HandleFailWithStatus(c, err, logger)
 		// }
 
-		user, err := fetchUserByID(c.Context(), driver, id, logger)
+		user, err := process.FetchUserByID(c.Context(), driver, id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if err := encrypt.DecryptMaps(user, models.UserDecryptField); err != nil {
+			return HandleFailWithStatus(c, err, logger)
 		}
 
 		successMessage := "User retrieved successfully"
@@ -53,9 +58,13 @@ func FindUserByFilter(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		users, err := fetchUserByFilter(c.Context(), driver, req, logger)
+		users, err := process.FetchUserByFilter(c.Context(), driver, req, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if err := encrypt.DecryptMaps(users, models.UserDecryptField); err != nil {
+			return HandleFailWithStatus(c, err, logger)
 		}
 
 		successMessage := "User(s) retrieved successfully"
@@ -74,7 +83,7 @@ func UpdateUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 		// 	return HandleErrorWithStatus(c, err, logger)
 		// }
 
-		exists, err := userExists(c.Context(), driver, id, logger)
+		exists, err := process.UserExists(c.Context(), driver, id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -95,7 +104,7 @@ func UpdateUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		user, err := updateUserByID(c.Context(), driver, id, req, logger)
+		user, err := process.UpdateUserByID(c.Context(), driver, id, req, logger)
 		if err != nil {
 			return HandleError(c, fiber.StatusInternalServerError, "Failed to Update users", logger, err)
 		}
@@ -117,7 +126,7 @@ func DeleteUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		exists, err := userExists(c.Context(), driver, id, logger)
+		exists, err := process.UserExists(c.Context(), driver, id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -130,7 +139,7 @@ func DeleteUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err = deleteUserByID(c.Context(), driver, id, logger)
+		err = process.DeleteUserByID(c.Context(), driver, id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -148,7 +157,7 @@ func GetUserFriendByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		exists, err := userExists(c.Context(), driver, id, logger)
+		exists, err := process.UserExists(c.Context(), driver, id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -157,7 +166,7 @@ func GetUserFriendByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
 		}
 
-		user, err := getUserFriendByID(c.Context(), driver, id, logger)
+		user, err := process.GetUserFriendByID(c.Context(), driver, id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -180,7 +189,7 @@ func CreateUser(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handle
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		data, err := createUser(c.Context(), driver, req, logger)
+		data, err := process.CreateUser(c.Context(), driver, req, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -199,7 +208,7 @@ func AddFriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		exists, err := userExists(c.Context(), driver, userID1, logger)
+		exists, err := process.UserExists(c.Context(), driver, userID1, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -218,7 +227,7 @@ func AddFriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler
 
 		userID2 := req.UserID
 
-		exists, err = userExists(c.Context(), driver, userID2, logger)
+		exists, err = process.UserExists(c.Context(), driver, userID2, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -227,7 +236,7 @@ func AddFriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", userID2), logger, nil)
 		}
 
-		err = addFriend(c.Context(), driver, userID1, userID2, logger)
+		err = process.AddFriend(c.Context(), driver, userID1, userID2, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -246,7 +255,7 @@ func Unfriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler 
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		exists, err := userExists(c.Context(), driver, userID1, logger)
+		exists, err := process.UserExists(c.Context(), driver, userID1, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -265,7 +274,7 @@ func Unfriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler 
 
 		userID2 := req.UserID
 
-		exists, err = userExists(c.Context(), driver, userID2, logger)
+		exists, err = process.UserExists(c.Context(), driver, userID2, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -274,7 +283,7 @@ func Unfriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler 
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", userID2), logger, nil)
 		}
 
-		err = unfriend(c.Context(), driver, userID1, userID2, logger)
+		err = process.Unfriend(c.Context(), driver, userID1, userID2, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -286,7 +295,7 @@ func Unfriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler 
 
 func AddStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		var req models.StudentInfoRequest
+		var req models.CollegeInfo
 
 		id := c.Params("id")
 
@@ -294,7 +303,7 @@ func AddStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		exists, err := userExists(c.Context(), driver, id, logger)
+		exists, err := process.UserExists(c.Context(), driver, id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -311,7 +320,7 @@ func AddStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err = addStudentInfo(c.Context(), driver, id, req, logger)
+		err = process.AddStudentInfo(c.Context(), driver, id, req, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -323,7 +332,7 @@ func AddStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 
 func UpdateStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		var req models.StudentInfoRequest
+		var req models.CollegeInfo
 
 		id := c.Params("id")
 
@@ -331,7 +340,7 @@ func UpdateStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		exists, err := userExists(c.Context(), driver, id, logger)
+		exists, err := process.UserExists(c.Context(), driver, id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -348,7 +357,7 @@ func UpdateStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err = updateStudentInfo(c.Context(), driver, id, req, logger)
+		err = process.UpdateStudentInfo(c.Context(), driver, id, req, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -366,7 +375,7 @@ func DeleteStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		exists, err := userExists(c.Context(), driver, id, logger)
+		exists, err := process.UserExists(c.Context(), driver, id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -379,7 +388,7 @@ func DeleteStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err = deleteStudentInfo(c.Context(), driver, id, logger)
+		err = process.DeleteStudentInfo(c.Context(), driver, id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -403,7 +412,7 @@ func AddUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		exists, err := userExists(c.Context(), driver, id, logger)
+		exists, err := process.UserExists(c.Context(), driver, id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -416,7 +425,11 @@ func AddUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err = addUserCompany(c.Context(), driver, id, req, logger)
+		if err := encrypt.EncryptStruct(req, models.UserEncryptField); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		err = process.AddUserCompany(c.Context(), driver, id, req, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -440,7 +453,7 @@ func UpdateUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		exists, err := userExists(c.Context(), driver, userID, logger)
+		exists, err := process.UserExists(c.Context(), driver, userID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -453,7 +466,11 @@ func UpdateUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err = updateUserCompany(c.Context(), driver, userID, companyID, req, logger)
+		if err := encrypt.EncryptStruct(req, models.UserEncryptField); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		err = process.UpdateUserCompany(c.Context(), driver, userID, companyID, req, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -471,7 +488,7 @@ func DeleteUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		exists, err := userExists(c.Context(), driver, userID, logger)
+		exists, err := process.UserExists(c.Context(), driver, userID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -484,7 +501,7 @@ func DeleteUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err = deleteUserCompany(c.Context(), driver, userID, companyID, logger)
+		err = process.DeleteUserCompany(c.Context(), driver, userID, companyID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
