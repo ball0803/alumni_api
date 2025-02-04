@@ -1,5 +1,9 @@
 package models
 
+var MessageEncryptField = []string{
+	"Content",
+}
+
 var UserEncryptField = []string{
 	"StudentInfo.GPAX",
 	"StudentInfo.AdmitYear",

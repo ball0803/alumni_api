@@ -52,6 +52,8 @@ func main() {
 
 	routes.PostRoutes(api, driver, logger)
 
+	routes.MessageRoutes(api, driver, logger)
+
 	// Start the server
 	if err := app.Listen(cfg.ServerPort); err != nil {
 		logger.Fatal("Failed to start server", zap.Error(err))

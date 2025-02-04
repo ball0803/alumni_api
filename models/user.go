@@ -52,8 +52,11 @@ type Contact struct {
 }
 
 type Message struct {
-	Text            customtypes.Encrypted[string] `json:"text,omitempty" mapstructure:"text" validate:"required"`
-	CreatedDatetime string                        `json:"created_datetime,omitempty" mapstructure:"created_datetime" validate:"required,datetime=2006-01-02T15:04:05Z07:00"`
+	MessageID       string                        `json:"message_id,omitempty" mapstructure:"message_id" validate:"omitempty,uuid4"`
+	SenderID        string                        `json:"sender_id,omitempty" mapstructure:"sender_id" validate:"required,uuid4"`
+	ReceiverID      string                        `json:"receiver_id,omitempty" mapstructure:"receiver_id" validate:"required,uuid4"`
+	Content         customtypes.Encrypted[string] `json:"content,omitempty" mapstructure:"content" validate:"required"`
+	CreatedDatetime string                        `json:"created_datetime,omitempty" mapstructure:"created_datetime" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
 	UpdatedDatetime string                        `json:"updated_datetime,omitempty" mapstructure:"updated_datetime" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
 }
 
