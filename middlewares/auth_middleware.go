@@ -26,3 +26,23 @@ func JWTMiddleware(logger *zap.Logger) fiber.Handler {
 		return c.Next()
 	}
 }
+
+// Authenticated WebSocket Upgrade Middleware
+func WebSocketMiddleware(logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// Extract token from headers
+		token := c.Get("Sec-WebSocket-Protocol") // WebSocket can't send Authorization header
+		if token == "" {
+			token = c.Query("token") // Fallback to query params
+		}
+
+		// Validate JWT
+		claims, err := auth.ParseJWT(token)
+		if err != nil {
+			return handlers.HandleFail(c, fiber.StatusUnauthorized, "Invalid or expired token", logger, nil)
+		}
+
+		c.Locals("claims", claims)
+		return c.Next()
+	}
+}

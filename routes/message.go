@@ -11,6 +11,8 @@ import (
 )
 
 func MessageRoutes(group fiber.Router, driver neo4j.DriverWithContext, logger *zap.Logger) {
+
+	group.Use("/ws", middlewares.WebSocketMiddleware(logger))
 	group.Get("/ws", websocket.New(websockets.WebsocketHandler))
 
 	msg := group.Group("/message")
@@ -18,4 +20,5 @@ func MessageRoutes(group fiber.Router, driver neo4j.DriverWithContext, logger *z
 
 	// Message endpoints
 	msg.Post("/:id/send", handlers.SendMessage(driver, logger))
+	msg.Post("/:id/reply", handlers.ReplyMessage(driver, logger))
 }

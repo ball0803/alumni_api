@@ -1,10 +1,11 @@
 package websockets
 
 import (
+	"alumni_api/models"
+	"encoding/json"
+	"github.com/gofiber/websocket/v2"
 	"log"
 	"sync"
-
-	"github.com/gofiber/websocket/v2"
 )
 
 // Map to store active connections
@@ -14,9 +15,13 @@ var Mutex = sync.Mutex{}
 func WebsocketHandler(c *websocket.Conn) {
 	defer c.Close()
 
-	userID := c.Query("user_id") // Get user ID from query param
+	claims, ok := c.Locals("claims").(*models.Claims)
+	if !ok {
+		return
+	}
+
 	Mutex.Lock()
-	Clients[userID] = c
+	Clients[claims.UserID] = c
 	Mutex.Unlock()
 
 	for {
@@ -25,10 +30,22 @@ func WebsocketHandler(c *websocket.Conn) {
 			log.Println("WebSocket error:", err)
 			break
 		}
-		log.Printf("Received from %s: %s", userID, msg)
+		log.Printf("Received from %s: %s", claims.UserID, msg)
 	}
 
 	Mutex.Lock()
-	delete(Clients, userID)
+	delete(Clients, claims.UserID)
 	Mutex.Unlock()
+}
+
+// SendWebSocketNotification sends a JSON message to a connected user
+func SendNotification(userID string, message interface{}) {
+	Mutex.Lock()
+	conn, online := Clients[userID]
+	Mutex.Unlock()
+
+	if online {
+		jsonMessage, _ := json.Marshal(message)
+		_ = conn.WriteMessage(websocket.TextMessage, jsonMessage)
+	}
 }

@@ -4,6 +4,10 @@ var MessageEncryptField = []string{
 	"Content",
 }
 
+var MessageDecryptField = []string{
+	"reply_content",
+}
+
 var UserEncryptField = []string{
 	"StudentInfo.GPAX",
 	"StudentInfo.AdmitYear",
