@@ -206,3 +206,49 @@ func DeleteMessage(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Han
 		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
 	}
 }
+
+func GetChatMessage(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		id := c.Params("user_id")
+		other_id := c.Params("other_user_id")
+
+		if err := validators.MultipleUUID(id, other_id); err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		exists, err := process.UserExists(c.Context(), driver, id, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
+		}
+
+		if err := validators.SameUser(c, id); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		exists, err = process.UserExists(c.Context(), driver, other_id, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("Receive User: %s not found", id), logger, nil)
+		}
+
+		chatMsg, err := process.GetMessage(c.Context(), driver, id, other_id, logger)
+		if err != nil {
+			return HandleError(c, fiber.StatusInternalServerError, "Failed to Send Message", logger, err)
+		}
+
+		if err := encrypt.DecryptMaps(chatMsg, models.ChatMessageDecryptField); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		successMessage := "Get Chat Message Successfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, chatMsg, logger)
+
+	}
+}

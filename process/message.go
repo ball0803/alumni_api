@@ -211,3 +211,78 @@ func DeleteMessage(ctx context.Context, driver neo4j.DriverWithContext, msg mode
 
 	return nil
 }
+
+func GetMessage(ctx context.Context, driver neo4j.DriverWithContext, sender_id, receiver_id string, logger *zap.Logger) (map[string]interface{}, error) {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeRead,
+	})
+	defer session.Close(ctx)
+
+	query := `
+    MATCH (s:UserProfile)-[:SENT]->(m:Message)<-[:RECEIVED]-(r:UserProfile)
+    OPTIONAL MATCH (m)-[:REPLIED]->(rm:Message)  // Find the replied message (if exists)
+    WHERE (s.user_id = $sender_id AND r.user_id = $receiver_id)
+      OR (s.user_id = $receiver_id AND r.user_id = $sender_id)
+    WITH 
+      COLLECT(
+        CASE
+          WHEN s.user_id = $sender_id THEN {
+            id: s.user_id,
+            username: s.username,
+            name: s.first_name + " " + s.last_name,
+            picture: s.profile_picture,
+            message: {
+              message_id: m.message_id,
+              content: m.content,
+              created_timestamp: m.created_timestamp,
+              update_timestamp: m.updated_timestamp,
+              reply_message_id: rm.message_id,
+              reply_message_content: rm.content
+            }
+          }
+        END
+      ) AS me,
+      COLLECT(
+        CASE
+          WHEN s.user_id = $receiver_id THEN {
+            id: s.user_id,
+            username: s.username,
+            name: s.first_name + " " + s.last_name,
+            picture: s.profile_picture,
+            message: {
+              message_id: m.message_id,
+              content: m.content,
+              created_timestamp: m.created_timestamp,
+              update_timestamp: m.updated_timestamp,
+              reply_message_id: rm.message_id,
+              reply_message_content: rm.content
+            }
+          }
+        END
+      ) AS other
+    RETURN me, other
+    `
+
+	params := map[string]interface{}{
+		"receiver_id": receiver_id,
+		"sender_id":   sender_id,
+	}
+
+	result, err := session.Run(ctx, query, params)
+
+	if err != nil {
+		logger.Error("Failed to send message", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to send message")
+	}
+
+	record, err := result.Single(ctx)
+	if err != nil {
+		logger.Error("Failed to collect results", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to collect results")
+	}
+
+	messageData := record.AsMap()
+
+	return messageData, nil
+}

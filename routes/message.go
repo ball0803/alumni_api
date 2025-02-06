@@ -17,9 +17,14 @@ func MessageRoutes(group fiber.Router, driver neo4j.DriverWithContext, logger *z
 	msg := group.Group("/user/:user_id/message")
 	msg.Use(middlewares.JWTMiddleware(logger))
 
+	chatMsg := group.Group("/user/:user_id/chat_message")
+	chatMsg.Use(middlewares.JWTMiddleware(logger))
+
 	// Message endpoints
 	msg.Post("/send", handlers.SendMessage(driver, logger))
 	msg.Post("/reply", handlers.ReplyMessage(driver, logger))
 	msg.Put("/:message_id", handlers.EditMessage(driver, logger))
 	msg.Delete("/:message_id", handlers.DeleteMessage(driver, logger))
+
+	chatMsg.Get("/:other_user_id", handlers.GetChatMessage(driver, logger))
 }

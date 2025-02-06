@@ -8,6 +8,13 @@ var MessageDecryptField = []string{
 	"reply_content",
 }
 
+var ChatMessageDecryptField = []string{
+	"me.message.content",
+	"me.message.reply_message_content",
+	"other.message.content",
+	"other.message.reply_message_content",
+}
+
 var UserEncryptField = []string{
 	"StudentInfo.GPAX",
 	"StudentInfo.AdmitYear",
