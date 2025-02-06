@@ -16,7 +16,7 @@ import (
 func SendMessage(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req models.Message
-		id := c.Params("id")
+		id := c.Params("user_id")
 
 		if err := validators.UUID(id); err != nil {
 			return HandleErrorWithStatus(c, err, logger)
@@ -70,7 +70,7 @@ func SendMessage(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 func ReplyMessage(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req models.ReplyMessage
-		id := c.Params("id")
+		id := c.Params("user_id")
 
 		if err := validators.UUID(id); err != nil {
 			return HandleErrorWithStatus(c, err, logger)
@@ -122,5 +122,87 @@ func ReplyMessage(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Hand
 		successMessage := "Send Reply Message Successfully"
 		return HandleSuccess(c, fiber.StatusOK, successMessage, msg, logger)
 
+	}
+}
+
+func EditMessage(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		var req models.EditMessage
+		id := c.Params("user_id")
+		message_id := c.Params("message_id")
+
+		if err := validators.UUID(id); err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		exists, err := process.UserExists(c.Context(), driver, id, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
+		}
+
+		if err := validators.SameUser(c, id); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		req.MessageID = message_id
+
+		if err := validators.Request(c, &req); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		if err := encrypt.EncryptStruct(&req, models.MessageEncryptField); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		err = process.EditMessage(c.Context(), driver, req, logger)
+		if err != nil {
+			return HandleError(c, fiber.StatusInternalServerError, "Failed to Send Message", logger, err)
+		}
+
+		successMessage := "Edit Message Successfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
+	}
+}
+
+func DeleteMessage(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		var req models.DeleteMessage
+		id := c.Params("user_id")
+		message_id := c.Params("message_id")
+
+		if err := validators.UUID(id); err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		exists, err := process.UserExists(c.Context(), driver, id, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
+		}
+
+		if err := validators.SameUser(c, id); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		req.MessageID = message_id
+
+		if err := validators.Request(c, &req); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		err = process.DeleteMessage(c.Context(), driver, req, logger)
+		if err != nil {
+			return HandleError(c, fiber.StatusInternalServerError, "Failed to Send Message", logger, err)
+		}
+
+		successMessage := "Delete Message Successfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
 	}
 }

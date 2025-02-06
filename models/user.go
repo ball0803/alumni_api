@@ -51,27 +51,6 @@ type Contact struct {
 	Phone    customtypes.Encrypted[string] `json:"phone,omitempty" mapstructure:"phone,squash" validate:"omitempty,e164"`
 }
 
-type Message struct {
-	MessageID       string                        `json:"message_id,omitempty" mapstructure:"message_id" validate:"omitempty,uuid4"`
-	SenderID        string                        `json:"sender_id,omitempty" mapstructure:"sender_id" validate:"required,uuid4"`
-	ReceiverID      string                        `json:"receiver_id,omitempty" mapstructure:"receiver_id" validate:"required,uuid4"`
-	Content         customtypes.Encrypted[string] `json:"content,omitempty" mapstructure:"content" validate:"required"`
-	Attachment      customtypes.Encrypted[string] `json:"attachment,omitempty" mapstructure:"attachment,squash" validate:"omitempty,url"`
-	CreatedDatetime string                        `json:"created_datetime,omitempty" mapstructure:"created_datetime" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
-	UpdatedDatetime string                        `json:"updated_datetime,omitempty" mapstructure:"updated_datetime" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
-}
-
-type ReplyMessage struct {
-	MessageID       string                        `json:"message_id,omitempty" mapstructure:"message_id" validate:"omitempty,uuid4"`
-	SenderID        string                        `json:"sender_id,omitempty" mapstructure:"sender_id" validate:"required,uuid4"`
-	ReceiverID      string                        `json:"receiver_id,omitempty" mapstructure:"receiver_id" validate:"required,uuid4"`
-	ReplyID         string                        `json:"reply_id,omitempty" mapstructure:"reply_id" validate:"required,uuid4"`
-	Content         customtypes.Encrypted[string] `json:"content,omitempty" mapstructure:"content" validate:"required"`
-	Attachment      customtypes.Encrypted[string] `json:"attachment,omitempty" mapstructure:"attachment,squash" validate:"omitempty,url"`
-	CreatedDatetime string                        `json:"created_datetime,omitempty" mapstructure:"created_datetime" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
-	UpdatedDatetime string                        `json:"updated_datetime,omitempty" mapstructure:"updated_datetime" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
-}
-
 type Friend struct {
 	UserID         string `json:"user_id,omitempty" mapstructure:"user_id" validate:"required,uuid4"`
 	CreateDatetime string `json:"create_datetime,omitempty" mapstructure:"create_datetime" validate:"required,datetime=2006-01-02T15:04:05Z07:00"`

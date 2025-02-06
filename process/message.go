@@ -153,3 +153,61 @@ func ReplyMessage(ctx context.Context, driver neo4j.DriverWithContext, msg model
 
 	return messageData, nil
 }
+
+func EditMessage(ctx context.Context, driver neo4j.DriverWithContext, msg models.EditMessage, logger *zap.Logger) error {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeWrite,
+	})
+	defer session.Close(ctx)
+
+	query := `
+        MATCH (m:Message {message_id: $message_id})
+        SET
+          m.content = $content,
+          m.updated_timestamp = timestamp()
+        RETURN m
+    `
+
+	params := map[string]interface{}{
+		"message_id": msg.MessageID,
+		"content":    msg.Content.Raw,
+	}
+
+	_, err := session.Run(ctx, query, params)
+
+	if err != nil {
+		logger.Error("Failed to edit message", zap.Error(err))
+		return fiber.NewError(http.StatusInternalServerError, "Failed to edit message")
+	}
+
+	return nil
+}
+
+func DeleteMessage(ctx context.Context, driver neo4j.DriverWithContext, msg models.DeleteMessage, logger *zap.Logger) error {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeWrite,
+	})
+	defer session.Close(ctx)
+
+	msg.MessageID = uuid.New().String()
+
+	query := `
+        MATCH (m:Message {message_id: $message_id})
+        DETACH DELETE m
+    `
+
+	params := map[string]interface{}{
+		"message_id": msg.MessageID,
+	}
+
+	_, err := session.Run(ctx, query, params)
+
+	if err != nil {
+		logger.Error("Failed to delete message", zap.Error(err))
+		return fiber.NewError(http.StatusInternalServerError, "Failed to delete message")
+	}
+
+	return nil
+}
