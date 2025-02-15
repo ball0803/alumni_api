@@ -4,15 +4,31 @@ import (
 	"alumni_api/encrypt"
 	"alumni_api/models"
 	"alumni_api/process"
-	// "alumni_api/utils"
 	"alumni_api/validators"
-	// "encoding/json"
 	"fmt"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"go.uber.org/zap"
 )
+
+func CreateUser(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		var req models.CreateUserRequest
+
+		if err := validators.Request(c, &req); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		data, err := process.CreateUser(c.Context(), driver, req, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		successMessage := "User created successfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, data, logger)
+	}
+}
 
 // GetUserByID handles the request to get a user by ID from the Neo4j database.
 func GetUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
@@ -47,28 +63,6 @@ func GetUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 
 		successMessage := "User retrieved successfully"
 		return HandleSuccess(c, fiber.StatusOK, successMessage, user, logger)
-	}
-}
-
-func FindUserByFilter(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		var req models.UserRequestFilter
-
-		if err := validators.Query(c, &req); err != nil {
-			return HandleFailWithStatus(c, err, logger)
-		}
-
-		users, err := process.FetchUserByFilter(c.Context(), driver, req, logger)
-		if err != nil {
-			return HandleErrorWithStatus(c, err, logger)
-		}
-
-		if err := encrypt.DecryptMaps(users, models.UserDecryptField); err != nil {
-			return HandleFailWithStatus(c, err, logger)
-		}
-
-		successMessage := "User(s) retrieved successfully"
-		return HandleSuccess(c, fiber.StatusOK, successMessage, users, logger)
 	}
 }
 
@@ -149,20 +143,42 @@ func DeleteUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 	}
 }
 
-func CreateUser(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+func FindUserByFilter(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		var req models.CreateUserRequest
+		var req models.UserRequestFilter
+
+		if err := validators.Query(c, &req); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		users, err := process.FetchUserByFilter(c.Context(), driver, req, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if err := encrypt.DecryptMaps(users, models.UserDecryptField); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		successMessage := "User(s) retrieved successfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, users, logger)
+	}
+}
+
+func NameFullTextSearch(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		var req models.UserFulltextSearch
 
 		if err := validators.Request(c, &req); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		data, err := process.CreateUser(c.Context(), driver, req, logger)
+		users, err := process.FullTextSeach(c.Context(), driver, req, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
 
-		successMessage := "User created successfully"
-		return HandleSuccess(c, fiber.StatusOK, successMessage, data, logger)
+		successMessage := "User(s) retrieved successfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, users, logger)
 	}
 }

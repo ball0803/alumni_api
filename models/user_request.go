@@ -9,6 +9,11 @@ type UserRequest struct {
 	ID string `json:"id" validate:"required,uuid4"`
 }
 
+type UserFulltextSearch struct {
+	Name string `json:"name,omitempty" mapstructure:"name,omitempty" validate:"omitempty,min=2,max=50"`
+	Mode string `json:"mode,omitempty" mapstructure:"mode,omitempty" validate:"omitempty,oneof=contain fuzzy exact"`
+}
+
 type UpdateUserProfileRequest struct {
 	Username       string    `json:"username,omitempty" mapstructure:"username,omitempty" validate:"omitempty,min=3,max=50"`
 	Password       string    `json:"user_password,omitempty" mapstructure:"user_password,omitempty" validate:"omitempty,min=8"`

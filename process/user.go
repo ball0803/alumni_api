@@ -167,73 +167,6 @@ func FetchUserByID(ctx context.Context, driver neo4j.DriverWithContext, id strin
 	return ret, nil
 }
 
-func FetchUserByFilter(ctx context.Context, driver neo4j.DriverWithContext, filter models.UserRequestFilter, logger *zap.Logger) ([]map[string]interface{}, error) {
-	session := driver.NewSession(ctx, neo4j.SessionConfig{
-		DatabaseName: "neo4j",
-		AccessMode:   neo4j.AccessModeRead,
-	})
-	defer session.Close(ctx)
-
-	query := "MATCH "
-	params := make(map[string]interface{})
-
-	if filter.Field != "" && filter.StudentType != "" {
-		query += `
-      (:StudentType {name: $studentTypeName})
-      <-[:BELONGS_TO_STUDENT_TYPE]-(u:UserProfile)-[:BELONGS_TO_FIELD]->
-      (:Field {name: $fieldName})
-    `
-		params["fieldName"] = filter.Field
-		params["studentTypeName"] = filter.StudentType
-	} else if filter.Field != "" {
-		query += "(u:UserProfile)-[:BELONG_TO_FIELD]->(:Field {name: $fieldName})"
-		params["fieldName"] = filter.Field
-	} else if filter.StudentType != "" {
-		query += "(u:UserProfile)-[:BELONG_TO_STUDENT_TYPE]->(:StudentType {name: $studentTypeName})"
-		params["studentTypeName"] = filter.StudentType
-	}
-
-	query += " RETURN u"
-
-	// Execute the query
-	result, err := session.Run(ctx, query, params)
-
-	if err != nil {
-		logger.Error("Failed to run query", zap.Error(err))
-		return nil, fiber.NewError(http.StatusInternalServerError, "Error retrieving data")
-	}
-
-	// Collect query results
-	records, err := result.Collect(ctx)
-	if err != nil {
-		logger.Error("Failed to collect query results", zap.Error(err))
-		return nil, fiber.NewError(http.StatusInternalServerError, "Error retrieving data")
-	}
-
-	var users []map[string]interface{}
-
-	// Process each record
-	for _, record := range records {
-		userNode, ok := record.Get("u")
-		if !ok {
-			logger.Warn("User node not found in record")
-			continue
-		}
-
-		userMap := userNode.(neo4j.Node).Props
-
-		for key, value := range userMap {
-			if value == nil || value == "" {
-				delete(userMap, key)
-			}
-		}
-
-		users = append(users, userMap)
-	}
-
-	return users, nil
-}
-
 func UpdateUserByID(
 	ctx context.Context,
 	driver neo4j.DriverWithContext,
@@ -341,177 +274,130 @@ func DeleteUserByID(ctx context.Context, driver neo4j.DriverWithContext, userID 
 	return nil
 }
 
-func AddStudentInfo(ctx context.Context, driver neo4j.DriverWithContext, id string, college_info models.CollegeInfo, logger *zap.Logger) error {
+func FetchUserByFilter(ctx context.Context, driver neo4j.DriverWithContext, filter models.UserRequestFilter, logger *zap.Logger) ([]map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
-		AccessMode:   neo4j.AccessModeWrite,
+		AccessMode:   neo4j.AccessModeRead,
 	})
 	defer session.Close(ctx)
 
-	checkUserQuery := `
-    MATCH (u:UserProfile {user_id: $userID})
-    RETURN u LIMIT 1
-  `
-	userResult, err1 := session.Run(ctx, checkUserQuery, map[string]interface{}{
-		"userID": id,
-	})
-	if err1 != nil {
-		logger.Error("Failed to check user existence", zap.Error(err1))
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to check user existence")
-	}
-	if !userResult.Next(ctx) {
-		logger.Warn("UserProfile not found", zap.String("userID", id))
-		return fiber.NewError(fiber.StatusNotFound, "UserProfile not found")
-	}
+	query := "MATCH "
+	params := make(map[string]interface{})
 
-	query := `
-    MERGE (faculty:Faculty {name: $faculty})
-    MERGE (faculty)-[:HAS_DEPARTMENT]->(department:Department {name: $department})
-    MERGE (department)-[:HAS_FIELD]->(field:Field {name: $field})
-    MERGE (field)-[:HAS_STUDENT_TYPE]->(studentType:StudentType {name: $studentType})
-
-    WITH field, studentType
-    MATCH (u:UserProfile {user_id: $userID})
-    MERGE (u)-[:BELONGS_TO_FIELD]->(field)
-    MERGE (u)-[:BELONGS_TO_STUDENT_TYPE]->(studentType)
-  `
-
-	params := map[string]interface{}{
-		"userID":      id,
-		"faculty":     college_info.Faculty,
-		"department":  college_info.Department,
-		"field":       college_info.Field,
-		"studentType": college_info.StudentType,
+	if filter.Field != "" && filter.StudentType != "" {
+		query += `
+      (:StudentType {name: $studentTypeName})
+      <-[:BELONGS_TO_STUDENT_TYPE]-(u:UserProfile)-[:BELONGS_TO_FIELD]->
+      (:Field {name: $fieldName})
+    `
+		params["fieldName"] = filter.Field
+		params["studentTypeName"] = filter.StudentType
+	} else if filter.Field != "" {
+		query += "(u:UserProfile)-[:BELONG_TO_FIELD]->(:Field {name: $fieldName})"
+		params["fieldName"] = filter.Field
+	} else if filter.StudentType != "" {
+		query += "(u:UserProfile)-[:BELONG_TO_STUDENT_TYPE]->(:StudentType {name: $studentTypeName})"
+		params["studentTypeName"] = filter.StudentType
 	}
 
-	_, err2 := session.Run(ctx, query, params)
-	if err2 != nil {
-		logger.Error("Failed to create or connect student info", zap.Error(err2))
-		return fiber.NewError(http.StatusInternalServerError, "Failed to create or connect student info")
+	query += " RETURN u"
+
+	// Execute the query
+	result, err := session.Run(ctx, query, params)
+
+	if err != nil {
+		logger.Error("Failed to run query", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Error retrieving data")
 	}
 
-	return nil
+	// Collect query results
+	records, err := result.Collect(ctx)
+	if err != nil {
+		logger.Error("Failed to collect query results", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Error retrieving data")
+	}
 
+	var users []map[string]interface{}
+
+	// Process each record
+	for _, record := range records {
+		userNode, ok := record.Get("u")
+		if !ok {
+			logger.Warn("User node not found in record")
+			continue
+		}
+
+		userMap := userNode.(neo4j.Node).Props
+
+		for key, value := range userMap {
+			if value == nil || value == "" {
+				delete(userMap, key)
+			}
+		}
+
+		users = append(users, userMap)
+	}
+
+	return users, nil
 }
 
-func UpdateStudentInfo(ctx context.Context, driver neo4j.DriverWithContext, id string, college_info models.CollegeInfo, logger *zap.Logger) error {
+func FullTextSeach(ctx context.Context, driver neo4j.DriverWithContext, query_term models.UserFulltextSearch, logger *zap.Logger) ([]map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
-		AccessMode:   neo4j.AccessModeWrite,
+		AccessMode:   neo4j.AccessModeRead,
 	})
 	defer session.Close(ctx)
 
-	checkUserQuery := `
-    MATCH (u:UserProfile {user_id: $userID})
-    RETURN u LIMIT 1
-  `
-	userResult, err1 := session.Run(ctx, checkUserQuery, map[string]interface{}{
-		"userID": id,
-	})
-	if err1 != nil {
-		logger.Error("Failed to check user existence", zap.Error(err1))
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to check user existence")
-	}
-	if !userResult.Next(ctx) {
-		logger.Warn("UserProfile not found", zap.String("userID", id))
-		return fiber.NewError(fiber.StatusNotFound, "UserProfile not found")
-	}
-
-	tx, err := session.BeginTransaction(ctx)
-	if err != nil {
-		logger.Error("Failed to begin transaction", zap.Error(err))
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to begin transaction")
-	}
-
 	query := `
-    MATCH (u:UserProfile {user_id: $userID})-[r: BELONGS_TO_FIELD|BELONGS_TO_STUDENT_TYPE]->()
-    DELETE r
-
-    MERGE (f:Faculty {name: $faculty})
-    MERGE (f)-[:HAS_DEPARTMENT]->(d:Department {name: $department})
-    MERGE (d)-[:HAS_FIELD]->(fld:Field {name: $field})
-    MERGE (fld)-[:HAS_STUDENT_TYPE]->(st:StudentType {name: $studentType})
-
-    MERGE (u)-[:BELONGS_TO_FIELD]->(fld)
-    MERGE (u)-[:BELONGS_TO_STUDENT_TYPE]->(st)
+    CALL db.index.fulltext.queryNodes("name", $name) YIELD node, score
+    RETURN 
+        node.user_id as user_id,
+        node.first_name + ' ' + node.last_name as fullname,
+        node.first_name_eng + ' ' + node.last_name_eng as fullname_eng,
+        score
+    ORDER BY score DESC
+    LIMIT 10
   `
+	params := make(map[string]interface{})
 
-	params := map[string]interface{}{
-		"userID":      id,
-		"faculty":     college_info.Faculty,
-		"department":  college_info.Department,
-		"field":       college_info.Field,
-		"studentType": college_info.StudentType,
+	switch query_term.Mode {
+	case "contain":
+		// For "contain" mode, use wildcard search
+		params["name"] = "*" + query_term.Name + "*"
+	case "fuzzy":
+		// For "fuzzy" mode, use fuzzy search
+		params["name"] = "~" + query_term.Name + "~"
+	case "exact":
+		// For "exact" mode, use exact match (quotes around the name)
+		params["name"] = `"` + query_term.Name + `"`
+	default:
+		// Default to "contain" mode if Mode is unspecified
+		params["name"] = "*" + query_term.Name + "*"
 	}
 
-	_, err = tx.Run(ctx, query, params)
+	// Execute the query
+	result, err := session.Run(ctx, query, params)
+
 	if err != nil {
-		tx.Rollback(ctx)
-		logger.Error("Failed to create or connect student info", zap.Error(err))
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create or connect student info")
+		logger.Error("Failed to run query", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Error retrieving data")
 	}
 
-	if err = tx.Commit(ctx); err != nil {
-		tx.Rollback(ctx)
-		logger.Error("Failed to commit transaction", zap.Error(err))
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to commit transaction")
-	}
-
-	return nil
-}
-
-func DeleteStudentInfo(ctx context.Context, driver neo4j.DriverWithContext, id string, logger *zap.Logger) error {
-	session := driver.NewSession(ctx, neo4j.SessionConfig{
-		DatabaseName: "neo4j",
-		AccessMode:   neo4j.AccessModeWrite,
-	})
-	defer session.Close(ctx)
-
-	checkUserQuery := `
-    MATCH (u:UserProfile {user_id: $userID})
-    RETURN u LIMIT 1
-  `
-	userResult, err1 := session.Run(ctx, checkUserQuery, map[string]interface{}{
-		"userID": id,
-	})
-	if err1 != nil {
-		logger.Error("Failed to check user existence", zap.Error(err1))
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to check user existence")
-	}
-	if !userResult.Next(ctx) {
-		logger.Warn("UserProfile not found", zap.String("userID", id))
-		return fiber.NewError(fiber.StatusNotFound, "UserProfile not found")
-	}
-
-	tx, err := session.BeginTransaction(ctx)
+	// Collect query results
+	records, err := result.Collect(ctx)
 	if err != nil {
-		logger.Error("Failed to begin transaction", zap.Error(err))
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to begin transaction")
+		logger.Error("Failed to collect query results", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Error retrieving data")
 	}
 
-	query := `
-    MATCH (u:UserProfile {user_id: $userID})-[r: BELONGS_TO_FIELD|BELONGS_TO_STUDENT_TYPE]->()
-    DELETE r
-  `
+	var users []map[string]interface{}
 
-	params := map[string]interface{}{
-		"userID": id,
+	// Process each record
+	for _, record := range records {
+		users = append(users, record.AsMap())
 	}
 
-	_, err = tx.Run(ctx, query, params)
-	if err != nil {
-		tx.Rollback(ctx)
-		logger.Error("Failed to remove student info", zap.Error(err))
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create or connect student info")
-	}
-
-	if err = tx.Commit(ctx); err != nil {
-		tx.Rollback(ctx)
-		logger.Error("Failed to commit transaction", zap.Error(err))
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to commit transaction")
-	}
-
-	return nil
+	return users, nil
 }
 
 func UserExists(ctx context.Context, driver neo4j.DriverWithContext, id string, logger *zap.Logger) (bool, error) {

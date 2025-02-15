@@ -13,6 +13,8 @@ func UserRoutes(group fiber.Router, driver neo4j.DriverWithContext, logger *zap.
 	// Public routes
 	user := group.Group("/users")
 	user.Post("", handlers.CreateUser(driver, logger))
+	user.Get("/search", handlers.FindUserByFilter(driver, logger))
+	user.Get("/fulltext_search", handlers.NameFullTextSearch(driver, logger))
 
 	// Authenticated routes
 	userWithAuth := group.Group("/users")
@@ -20,7 +22,6 @@ func UserRoutes(group fiber.Router, driver neo4j.DriverWithContext, logger *zap.
 
 	// User endpoints
 	userWithAuth.Get("/:id", handlers.GetUserByID(driver, logger))
-	userWithAuth.Get("", handlers.FindUserByFilter(driver, logger))
 	userWithAuth.Put("/:id", handlers.UpdateUserByID(driver, logger))
 	userWithAuth.Delete("/:id", handlers.DeleteUserByID(driver, logger))
 
