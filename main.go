@@ -52,6 +52,8 @@ func main() {
 
 	routes.PostRoutes(api, driver, logger)
 
+	routes.UploadRoutes(api, driver, logger)
+
 	routes.MessageRoutes(api, driver, logger)
 
 	// Start the server
