@@ -2,11 +2,11 @@ package main
 
 import (
 	"alumni_api/config"
-	"alumni_api/db"
-	"alumni_api/logger"
-	"alumni_api/middlewares"
-	"alumni_api/routes"
-	"alumni_api/validators"
+	"alumni_api/internal/db"
+	"alumni_api/internal/logger"
+	"alumni_api/internal/middlewares"
+	"alumni_api/internal/routes"
+	"alumni_api/internal/validators"
 	"context"
 
 	"github.com/gofiber/fiber/v2"
