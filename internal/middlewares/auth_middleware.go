@@ -2,7 +2,7 @@ package middlewares
 
 import (
 	"alumni_api/internal/auth"
-	"alumni_api/internal/handlers"
+	"alumni_api/internal/controllers"
 
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
@@ -12,13 +12,13 @@ func JWTMiddleware(logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
-			return handlers.HandleFail(c, fiber.StatusUnauthorized, "Missing Token", logger, nil)
+			return controllers.HandleFail(c, fiber.StatusUnauthorized, "Missing Token", logger, nil)
 		}
 
 		tokenString := authHeader[len("Bearer "):]
 		claims, err := auth.ParseJWT(tokenString)
 		if err != nil {
-			return handlers.HandleFail(c, fiber.StatusUnauthorized, "Invalid or expired token", logger, nil)
+			return controllers.HandleFail(c, fiber.StatusUnauthorized, "Invalid or expired token", logger, nil)
 		}
 
 		// Store claims in the context
@@ -39,7 +39,7 @@ func WebSocketMiddleware(logger *zap.Logger) fiber.Handler {
 		// Validate JWT
 		claims, err := auth.ParseJWT(token)
 		if err != nil {
-			return handlers.HandleFail(c, fiber.StatusUnauthorized, "Invalid or expired token", logger, nil)
+			return controllers.HandleFail(c, fiber.StatusUnauthorized, "Invalid or expired token", logger, nil)
 		}
 
 		c.Locals("claims", claims)

@@ -136,3 +136,55 @@ func Unfriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler 
 		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
 	}
 }
+
+func GetFOAF(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		var req models.UserFOAFRequest
+
+		user_id := c.Params("user_id")
+		other_id := c.Params("other_id")
+
+		if err := validators.Query(c, &req); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		// if err := validators.MultipleUUID(user_id, other_id); err != nil {
+		// 	return HandleFailWithStatus(c, err, logger)
+		// }
+
+		exists, err := repositories.UserExists(c.Context(), driver, user_id, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", user_id), logger, nil)
+		}
+
+		exists, err = repositories.UserExists(c.Context(), driver, other_id, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", other_id), logger, nil)
+		}
+
+		// if err := validators.SameUser(c, user_id); err != nil {
+		// 	return HandleFailWithStatus(c, err, logger)
+		// }
+
+		degree := int(req.Degree)
+		if degree == 0 {
+			degree = 3
+		}
+
+		foaf, err := repositories.GetFOAF(c.Context(), driver, user_id, other_id, degree, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		successMessage := fmt.Sprintf("Successfully retrieve friend of a friend")
+		return HandleSuccess(c, fiber.StatusOK, successMessage, foaf, logger)
+	}
+}

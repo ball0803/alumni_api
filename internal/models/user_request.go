@@ -61,3 +61,7 @@ type UserRequestCompany struct {
 type UserCompanyUpdateRequest struct {
 	Position customtypes.Encrypted[string] `json:"position,omitempty" mapstructure:"position,omitempty" validate:"omitempty,max=100"`
 }
+
+type UserFOAFRequest struct {
+	Degree int8 `json:"degree,omitempty" mapstructure:"degree" validate:"omitempty,min=1,max=5"`
+}

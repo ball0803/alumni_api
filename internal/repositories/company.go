@@ -166,7 +166,7 @@ func DeleteUserCompany(ctx context.Context, driver neo4j.DriverWithContext, user
 	return nil
 }
 
-func FindAssociate(ctx context.Context, driver neo4j.DriverWithContext, company models.Company, logger *zap.Logger) ([]map[string]interface{}, error) {
+func FindCompanyAssociate(ctx context.Context, driver neo4j.DriverWithContext, company models.Company, logger *zap.Logger) ([]map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeRead,

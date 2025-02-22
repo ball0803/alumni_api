@@ -124,7 +124,7 @@ func DeleteUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 	}
 }
 
-func FindAssociate(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+func FindCompanyAssociate(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req models.Company
 
@@ -136,7 +136,7 @@ func FindAssociate(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Han
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		users, err := repositories.FindAssociate(c.Context(), driver, req, logger)
+		users, err := repositories.FindCompanyAssociate(c.Context(), driver, req, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
