@@ -11,6 +11,6 @@ func AuthRoutes(group fiber.Router, driver neo4j.DriverWithContext, logger *zap.
 	auth := group.Group("/auth")
 
 	auth.Post("/registry", controllers.Registry(driver, logger))
-
 	auth.Post("/login", controllers.Login(driver, logger))
+	auth.Get("/verify-email", controllers.Verify(driver, logger))
 }

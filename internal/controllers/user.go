@@ -4,6 +4,7 @@ import (
 	"alumni_api/internal/encrypt"
 	"alumni_api/internal/models"
 	"alumni_api/internal/repositories"
+	"alumni_api/internal/services"
 	"alumni_api/internal/validators"
 	"fmt"
 
@@ -39,7 +40,7 @@ func GetUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 		// 	return HandleFailWithStatus(c, err, logger)
 		// }
 
-		exists, err := repositories.UserExists(c.Context(), driver, id, logger)
+		exists, err := services.UserExist(c.Context(), driver, id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -77,7 +78,7 @@ func UpdateUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 		// 	return HandleErrorWithStatus(c, err, logger)
 		// }
 
-		exists, err := repositories.UserExists(c.Context(), driver, id, logger)
+		exists, err := services.UserExist(c.Context(), driver, id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -120,7 +121,7 @@ func DeleteUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		exists, err := repositories.UserExists(c.Context(), driver, id, logger)
+		exists, err := services.UserExist(c.Context(), driver, id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}

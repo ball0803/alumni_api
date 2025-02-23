@@ -7,6 +7,7 @@ import (
 
 	"alumni_api/internal/encrypt"
 	"alumni_api/internal/repositories"
+	"alumni_api/internal/services"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
@@ -22,7 +23,7 @@ func SendMessage(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 			return HandleErrorWithStatus(c, err, logger)
 		}
 
-		exists, err := repositories.UserExists(c.Context(), driver, id, logger)
+		exists, err := services.UserExist(c.Context(), driver, id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -41,7 +42,7 @@ func SendMessage(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		exists, err = repositories.UserExists(c.Context(), driver, req.ReceiverID, logger)
+		exists, err = services.UserExist(c.Context(), driver, req.ReceiverID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -76,7 +77,7 @@ func ReplyMessage(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Hand
 			return HandleErrorWithStatus(c, err, logger)
 		}
 
-		exists, err := repositories.UserExists(c.Context(), driver, id, logger)
+		exists, err := services.UserExist(c.Context(), driver, id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -95,7 +96,7 @@ func ReplyMessage(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Hand
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		exists, err = repositories.UserExists(c.Context(), driver, req.ReceiverID, logger)
+		exists, err = services.UserExist(c.Context(), driver, req.ReceiverID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -135,7 +136,7 @@ func EditMessage(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 			return HandleErrorWithStatus(c, err, logger)
 		}
 
-		exists, err := repositories.UserExists(c.Context(), driver, id, logger)
+		exists, err := services.UserExist(c.Context(), driver, id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -178,7 +179,7 @@ func DeleteMessage(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Han
 			return HandleErrorWithStatus(c, err, logger)
 		}
 
-		exists, err := repositories.UserExists(c.Context(), driver, id, logger)
+		exists, err := services.UserExist(c.Context(), driver, id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -216,7 +217,7 @@ func GetChatMessage(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleErrorWithStatus(c, err, logger)
 		}
 
-		exists, err := repositories.UserExists(c.Context(), driver, id, logger)
+		exists, err := services.UserExist(c.Context(), driver, id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -229,7 +230,7 @@ func GetChatMessage(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		exists, err = repositories.UserExists(c.Context(), driver, other_id, logger)
+		exists, err = services.UserExist(c.Context(), driver, other_id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}

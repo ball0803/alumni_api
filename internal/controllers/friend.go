@@ -3,6 +3,7 @@ package controllers
 import (
 	"alumni_api/internal/models"
 	"alumni_api/internal/repositories"
+	"alumni_api/internal/services"
 	"alumni_api/internal/validators"
 	"fmt"
 
@@ -19,7 +20,7 @@ func GetUserFriendByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		exists, err := repositories.UserExists(c.Context(), driver, id, logger)
+		exists, err := services.UserExist(c.Context(), driver, id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -52,7 +53,7 @@ func AddFriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		exists, err := repositories.UserExists(c.Context(), driver, userID1, logger)
+		exists, err := services.UserExist(c.Context(), driver, userID1, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -71,7 +72,7 @@ func AddFriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler
 
 		userID2 := req.UserID
 
-		exists, err = repositories.UserExists(c.Context(), driver, userID2, logger)
+		exists, err = services.UserExist(c.Context(), driver, userID2, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -99,7 +100,7 @@ func Unfriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler 
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		exists, err := repositories.UserExists(c.Context(), driver, userID1, logger)
+		exists, err := services.UserExist(c.Context(), driver, userID1, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -118,7 +119,7 @@ func Unfriend(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler 
 
 		userID2 := req.UserID
 
-		exists, err = repositories.UserExists(c.Context(), driver, userID2, logger)
+		exists, err = services.UserExist(c.Context(), driver, userID2, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -152,7 +153,7 @@ func GetFOAF(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 		// 	return HandleFailWithStatus(c, err, logger)
 		// }
 
-		exists, err := repositories.UserExists(c.Context(), driver, user_id, logger)
+		exists, err := services.UserExist(c.Context(), driver, user_id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -161,7 +162,7 @@ func GetFOAF(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", user_id), logger, nil)
 		}
 
-		exists, err = repositories.UserExists(c.Context(), driver, other_id, logger)
+		exists, err = services.UserExist(c.Context(), driver, other_id, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}

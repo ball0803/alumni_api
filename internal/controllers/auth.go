@@ -4,7 +4,9 @@ import (
 	"alumni_api/internal/auth"
 	"alumni_api/internal/models"
 	"alumni_api/internal/repositories"
+	"alumni_api/internal/services"
 	"alumni_api/internal/validators"
+	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"go.uber.org/zap"
@@ -21,6 +23,15 @@ func Login(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 		user, err := repositories.Login(c.Context(), driver, req.Username, logger)
 		if err != nil {
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
+		}
+
+		ok, err := services.UserVerify(c.Context(), driver, user.UserID, logger)
+		fmt.Println(ok)
+		if err != nil {
+			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, err)
+		}
+		if !ok {
+			return HandleError(c, fiber.StatusUnauthorized, "User Is Not Verify", logger, err)
 		}
 
 		err = auth.CheckPasswordHash(req.Password, user.Password)
@@ -59,5 +70,32 @@ func Registry(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler 
 
 		successMessage := "Registry Succesfully"
 		return HandleSuccess(c, fiber.StatusOK, successMessage, user, logger)
+	}
+}
+
+func Verify(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		token := c.Query("token")
+
+		claim, err := auth.ParseVerification(token)
+		if err != nil {
+			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
+		}
+
+		exists, err := services.UserExist(c.Context(), driver, claim.UserID, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", claim.UserID), logger, nil)
+		}
+
+		err = repositories.Verify(c.Context(), driver, claim.UserID, claim.VerificationToken, logger)
+		if err != nil {
+			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
+		}
+
+		return c.Redirect("http://localhost:3000/v1", fiber.StatusFound)
 	}
 }

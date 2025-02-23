@@ -3,6 +3,9 @@ package auth
 import (
 	"alumni_api/config"
 	"alumni_api/internal/models"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -30,6 +33,42 @@ func GenerateJWT(userID, role string, admitYear int) (string, error) {
 // ParseJWT validates and parses a JWT
 func ParseJWT(tokenString string) (*models.Claims, error) {
 	claims := &models.Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return jwtSecret, nil
+	})
+
+	if err != nil || !token.Valid {
+		return nil, err
+	}
+
+	return claims, nil
+}
+
+func GenerateVerificationToken() string {
+	token := make([]byte, 32)
+	_, err := rand.Read(token)
+	if err != nil {
+		fmt.Printf("Failed to generate token: %v", err)
+	}
+	return hex.EncodeToString(token)
+}
+
+func GenerateVerificationJWT(userID, verifyToken string) (string, error) {
+	verify := models.Verify{
+		UserID:            userID,
+		VerificationToken: verifyToken,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(72 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, verify)
+	return token.SignedString(jwtSecret)
+}
+
+func ParseVerification(tokenString string) (*models.Verify, error) {
+	claims := &models.Verify{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		return jwtSecret, nil
 	})
