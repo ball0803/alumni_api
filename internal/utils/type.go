@@ -5,14 +5,26 @@ import (
 	"time"
 )
 
-func IsSliceOfByte(val reflect.Value) bool {
-	// Check if the value is a slice
-	if val.Kind() != reflect.Slice {
-		return false
+func CheckMapWithTimeField(data interface{}) bool {
+	// Use reflection to get the value of the data
+	v := reflect.ValueOf(data)
+
+	// Check if the value is a map
+	if v.Kind() == reflect.Map {
+		// Check if the map has a "Time" key
+		for _, key := range v.MapKeys() {
+			if key.String() == "Time" {
+				// Check if the value of the "Time" key is of the expected type
+				timeValue := v.MapIndex(key)
+				if timeValue.IsValid() {
+					return true
+				}
+			}
+		}
 	}
 
-	// Check if the element type of the slice is byte (uint8)
-	return val.Type().Elem().Kind() == reflect.Uint8
+	// Return false if it's not a map with the "Time" field
+	return false
 }
 
 // Helper function to check if a value is zero-valued, nil, or an empty map

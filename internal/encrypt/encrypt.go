@@ -2,7 +2,6 @@ package encrypt
 
 import (
 	"alumni_api/config"
-	"alumni_api/internal/utils"
 	"reflect"
 	"strings"
 )
@@ -104,7 +103,7 @@ func AESDecryptWithHeader(input reflect.Value) (reflect.Value, error) {
 		input = input.Elem()
 	}
 
-	if !utils.IsSliceOfByte(input) {
+	if !IsSliceOfByte(input) {
 		return input, nil
 	}
 

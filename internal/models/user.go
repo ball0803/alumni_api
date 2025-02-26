@@ -44,11 +44,11 @@ type Company struct {
 }
 
 type Contact struct {
-	Email    customtypes.Encrypted[string] `json:"email,omitempty" mapstructure:"email,squash" validate:"omitempty,email"`
-	Github   customtypes.Encrypted[string] `json:"github,omitempty" mapstructure:"github,squash" validate:"omitempty,url"`
-	Linkedin customtypes.Encrypted[string] `json:"linkedin,omitempty" mapstructure:"linkedin,squash" validate:"omitempty,url"`
-	Facebook customtypes.Encrypted[string] `json:"facebook,omitempty" mapstructure:"facebook,squash" validate:"omitempty,url"`
-	Phone    customtypes.Encrypted[string] `json:"phone,omitempty" mapstructure:"phone,squash" validate:"omitempty,e164"`
+	Email    string `json:"email,omitempty" mapstructure:"email" validate:"omitempty,email"`
+	Github   string `json:"github,omitempty" mapstructure:"github" validate:"omitempty,url"`
+	Linkedin string `json:"linkedin,omitempty" mapstructure:"linkedin" validate:"omitempty,url"`
+	Facebook string `json:"facebook,omitempty" mapstructure:"facebook" validate:"omitempty,url"`
+	Phone    string `json:"phone,omitempty" mapstructure:"phone" validate:"omitempty,e164"`
 }
 
 type Friend struct {

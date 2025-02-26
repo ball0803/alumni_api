@@ -6,9 +6,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"reflect"
 	"strings"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -16,7 +14,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func CreateUser(ctx context.Context, driver neo4j.DriverWithContext, user models.CreateUserRequest, logger *zap.Logger) (map[string]interface{}, error) {
+func CreateProfile(ctx context.Context, driver neo4j.DriverWithContext, user models.CreateProfileRequest, logger *zap.Logger) (map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -24,71 +22,45 @@ func CreateUser(ctx context.Context, driver neo4j.DriverWithContext, user models
 	defer session.Close(ctx)
 
 	userID := uuid.New().String()
-
-	// Check for username uniqueness
-	checkQuery := "MATCH (u:UserProfile {username: $username}) RETURN u LIMIT 1"
-	checkParams := map[string]interface{}{"username": user.Username}
-	checkResult, err := session.Run(ctx, checkQuery, checkParams)
-	if err != nil {
-		logger.Error("Failed to check username uniqueness", zap.Error(err))
-		return nil, fiber.NewError(http.StatusInternalServerError, "Error checking username uniqueness")
-	}
-	if checkResult.Next(ctx) {
-		return nil, fiber.NewError(http.StatusConflict, "Username already exists")
-	}
-
 	user.UserID = userID
 
 	// Prepare the query and parameters
 	query := "CREATE (u:UserProfile {"
-	var params = map[string]interface{}{}
+	params, err := utils.StructToMap(user)
+	if err != nil {
+		logger.Error("Failed to create user", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Error creating user")
+	}
 	var queryBuilder strings.Builder
 	queryBuilder.WriteString(query)
 
-	// Iterate over struct fields using reflection
-	v := reflect.ValueOf(user)
-	t := v.Type()
+	fieldCount := 0 // Track field additions
 
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		fieldValue := v.Field(i)
-
-		fieldName := field.Tag.Get("mapstructure")
-		if fieldName == "" {
-			fieldName = field.Name
-		}
-
-		if fieldValue.IsZero() {
+	for fieldName, fieldValue := range params {
+		if fieldValue == nil {
 			continue
 		}
 
-		// Handling time fields with special formatting
-		if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
-			formattedDate := utils.FormatDate(fieldValue.Interface().(time.Time))
-			if formattedDate != nil {
-				queryBuilder.WriteString(fmt.Sprintf("%s: $%s, ", fieldName, fieldName))
-				params[fieldName] = formattedDate
-			}
-		} else if fieldValue.Kind() == reflect.Struct || fieldValue.Kind() == reflect.Map {
-			if !utils.IsEmpty(fieldValue.Interface()) {
-				queryBuilder.WriteString(fmt.Sprintf("%s: $%s, ", fieldName, fieldName))
-				params[fieldName] = fieldValue.Interface()
-			}
-		} else {
-			queryBuilder.WriteString(fmt.Sprintf("%s: $%s, ", fieldName, fieldName))
-			params[fieldName] = fieldValue.Interface()
+		if fieldCount > 0 {
+			queryBuilder.WriteString(", ")
 		}
+		queryBuilder.WriteString(fmt.Sprintf("%s: $%s", fieldName, fieldName))
+		params[fieldName] = fieldValue // Store the field value in params
+		fieldCount++
 	}
 
 	queryBuilder.WriteString("}) RETURN u.user_id AS user_id")
 	query = queryBuilder.String()
 
+	fmt.Println(params)
+	// fmt.Println(query)
+
 	// Run the query
-	_, err = session.Run(ctx, query, params)
-	if err != nil {
-		logger.Error("Failed to create user", zap.Error(err))
-		return nil, fiber.NewError(http.StatusInternalServerError, "Error creating user")
-	}
+	// _, err = session.Run(ctx, query, params)
+	// if err != nil {
+	// 	logger.Error("Failed to create user", zap.Error(err))
+	// 	return nil, fiber.NewError(http.StatusInternalServerError, "Error creating user")
+	// }
 
 	// Prepare the result map
 	ret := map[string]interface{}{

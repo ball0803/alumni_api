@@ -29,6 +29,6 @@ type LoginRequest struct {
 }
 
 type ReqistryRequest struct {
-	Username string `json:"username" mapstructure:"username" validate:"required"`
+	Username string `json:"username" mapstructure:"username" validate:"required,url"`
 	Password string `json:"password,omitempty" mapstructure:"password" validate:"required,min=8"`
 }

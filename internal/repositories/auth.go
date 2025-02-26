@@ -56,13 +56,30 @@ func Registry(ctx context.Context, driver neo4j.DriverWithContext, user models.R
 	})
 	defer session.Close(ctx)
 
+	// Start a transaction
+	tx, err := session.BeginTransaction(ctx)
+	if err != nil {
+		logger.Error("Failed to start transaction", zap.Error(err))
+		return nil, fmt.Errorf("error starting transaction: %w", err)
+	}
+
+	// Defer a function to handle transaction rollback in case of failure
+	defer func() {
+		if err != nil {
+			logger.Info("Rolling back transaction due to error", zap.Error(err))
+			if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+				logger.Error("Failed to rollback transaction", zap.Error(rollbackErr))
+			}
+		}
+	}()
+
 	// Check if the username already exists
 	checkQuery := `
         MATCH (u:UserProfile {username: $username})
         RETURN u.user_id AS user_id, u.is_verify AS is_verify, u.verification_token AS verification_token
     `
 	checkParams := map[string]interface{}{"username": user.Username}
-	checkResult, err := session.Run(ctx, checkQuery, checkParams)
+	checkResult, err := tx.Run(ctx, checkQuery, checkParams)
 	if err != nil {
 		logger.Error("Failed to check username uniqueness", zap.Error(err))
 		return nil, fmt.Errorf("error checking username uniqueness: %w", err)
@@ -77,6 +94,7 @@ func Registry(ctx context.Context, driver neo4j.DriverWithContext, user models.R
 
 	// Generate a verification token
 	token := auth.GenerateVerificationToken()
+
 	// If the username exists
 	if checkResult.Next(ctx) {
 		record := checkResult.Record()
@@ -85,7 +103,7 @@ func Registry(ctx context.Context, driver neo4j.DriverWithContext, user models.R
 		jwtToken, err := auth.GenerateVerificationJWT(userID.(string), token)
 		if err != nil {
 			logger.Error("Failed to create verify jwt", zap.Error(err))
-			return nil, fmt.Errorf("Failed to create verify jwt: %w", err)
+			return nil, fmt.Errorf("failed to create verify jwt: %w", err)
 		}
 
 		// If the user is already verified, return an error
@@ -109,15 +127,25 @@ func Registry(ctx context.Context, driver neo4j.DriverWithContext, user models.R
 			"token":    token,
 		}
 
-		_, err = session.Run(ctx, updateQuery, updateParams)
+		_, err = tx.Run(ctx, updateQuery, updateParams)
 		if err != nil {
 			logger.Error("Failed to update user", zap.Error(err))
 			return nil, fmt.Errorf("error updating user: %w", err)
 		}
 
-		err = utils.SendVerificationEmail(user.Username, jwtToken)
-		if err != nil {
+		// Commit the transaction before sending the email
+		if err = tx.Commit(ctx); err != nil {
+			logger.Error("Failed to commit transaction", zap.Error(err))
+			return nil, fmt.Errorf("error committing transaction: %w", err)
+		}
+
+		// Send verification email
+		if err = utils.SendVerificationEmail(user.Username, jwtToken); err != nil {
 			logger.Error("Failed to send verification email", zap.Error(err))
+			// Rollback the transaction if email sending fails
+			if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+				logger.Error("Failed to rollback transaction", zap.Error(rollbackErr))
+			}
 			return nil, fmt.Errorf("error sending verification email: %w", err)
 		}
 
@@ -133,7 +161,7 @@ func Registry(ctx context.Context, driver neo4j.DriverWithContext, user models.R
 	jwtToken, err := auth.GenerateVerificationJWT(userID, token)
 	if err != nil {
 		logger.Error("Failed to create verify jwt", zap.Error(err))
-		return nil, fmt.Errorf("Failed to create verify jwt: %w", err)
+		return nil, fmt.Errorf("failed to create verify jwt: %w", err)
 	}
 
 	createQuery := `
@@ -155,7 +183,7 @@ func Registry(ctx context.Context, driver neo4j.DriverWithContext, user models.R
 		"role":     "alumnus",
 	}
 
-	createResult, err := session.Run(ctx, createQuery, createParams)
+	createResult, err := tx.Run(ctx, createQuery, createParams)
 	if err != nil {
 		logger.Error("Failed to create user", zap.Error(err))
 		return nil, fmt.Errorf("error creating user: %w", err)
@@ -169,9 +197,19 @@ func Registry(ctx context.Context, driver neo4j.DriverWithContext, user models.R
 
 	createdUserID, _ := createRecord.Get("user_id")
 
-	err = utils.SendVerificationEmail(user.Username, jwtToken)
-	if err != nil {
+	// Commit the transaction before sending the email
+	if err = tx.Commit(ctx); err != nil {
+		logger.Error("Failed to commit transaction", zap.Error(err))
+		return nil, fmt.Errorf("error committing transaction: %w", err)
+	}
+
+	// Send verification email
+	if err = utils.SendVerificationEmail(user.Username, jwtToken); err != nil {
 		logger.Error("Failed to send verification email", zap.Error(err))
+		// Rollback the transaction if email sending fails
+		if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+			logger.Error("Failed to rollback transaction", zap.Error(rollbackErr))
+		}
 		return nil, fmt.Errorf("error sending verification email: %w", err)
 	}
 

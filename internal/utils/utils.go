@@ -3,9 +3,11 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"reflect"
+
 	"github.com/mitchellh/mapstructure"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j/dbtype"
-	"reflect"
+
 	// "strings"
 	"time"
 )
@@ -78,6 +80,11 @@ func StructToMap(data interface{}) (map[string]interface{}, error) {
 			}
 			result[key] = updatedSlice
 		}
+		// if CheckMapWithTimeField(value) {
+		// 	timeValue := reflect.ValueOf(value)
+		// 	rawValue := timeValue.MapIndex(reflect.ValueOf("Time"))
+		// 	fmt.Println(rawValue)
+		// }
 	}
 
 	ReplaceMapsWithRaw(result)

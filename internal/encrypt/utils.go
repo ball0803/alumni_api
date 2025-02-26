@@ -20,6 +20,16 @@ const (
 	TypeHeaderBytes   byte = 0x05
 )
 
+func IsSliceOfByte(val reflect.Value) bool {
+	// Check if the value is a slice
+	if val.Kind() != reflect.Slice {
+		return false
+	}
+
+	// Check if the element type of the slice is byte (uint8)
+	return val.Type().Elem().Kind() == reflect.Uint8
+}
+
 func extractActualValue(input reflect.Value, fieldName string) (reflect.Value, error) {
 	if input.Kind() == reflect.Ptr {
 		input = input.Elem()

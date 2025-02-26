@@ -13,15 +13,19 @@ import (
 	"go.uber.org/zap"
 )
 
-func CreateUser(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+func CreateProfile(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		var req models.CreateUserRequest
+		var req models.CreateProfileRequest
+
+		if err := validators.UserAdmin(c); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
 
 		if err := validators.Request(c, &req); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		data, err := repositories.CreateUser(c.Context(), driver, req, logger)
+		data, err := repositories.CreateProfile(c.Context(), driver, req, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
