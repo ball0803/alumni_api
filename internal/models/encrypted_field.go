@@ -16,9 +16,9 @@ var ChatMessageDecryptField = []string{
 }
 
 var CompanyEncryptField = []string{
-	"Companies.Company",
-	"Companies.Address",
 	"Companies.Position",
+	"Companies.SalaryMin",
+	"Companies.SalaryMax",
 }
 
 var UserEncryptField = []string{

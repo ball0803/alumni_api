@@ -2,7 +2,6 @@ package validators
 
 import (
 	"alumni_api/internal/models"
-	"fmt"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -23,7 +22,6 @@ func SameUser(c *fiber.Ctx, user_id string) error {
 
 func UserAdmin(c *fiber.Ctx) error {
 	claims, ok := c.Locals("claims").(*models.Claims)
-	fmt.Println(claims.Role)
 	if !ok {
 		return fiber.NewError(fiber.StatusUnauthorized, "Unauthorized")
 	}

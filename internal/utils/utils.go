@@ -12,6 +12,38 @@ import (
 	"time"
 )
 
+func CustomTimeDecodeHook(from reflect.Type, to reflect.Type, data interface{}) (interface{}, error) {
+	if from.Kind() == reflect.Ptr {
+		from = from.Elem()
+	}
+
+	if from.Kind() == reflect.Struct {
+		for i := 0; i < from.NumField(); i++ {
+			field := from.Field(i)
+
+			if field.Anonymous && field.Type == reflect.TypeOf(time.Time{}) {
+				v := reflect.ValueOf(data)
+				if v.Kind() == reflect.Ptr {
+					v = v.Elem()
+				}
+
+				t := v.Field(i).Interface().(time.Time)
+
+				if to == reflect.TypeOf(time.Time{}) {
+					return t, nil
+				}
+
+				if to == reflect.TypeOf(map[string]interface{}{}) {
+					return map[string]interface{}{
+						"Time": t,
+					}, nil
+				}
+			}
+		}
+	}
+	return data, nil
+}
+
 // Custom decode hook for dbtype.Date to time.Time conversion
 func dateToTimeHook(from reflect.Type, to reflect.Type, data interface{}) (interface{}, error) {
 	if from == reflect.TypeOf(dbtype.Date{}) && to == reflect.TypeOf(time.Time{}) {
@@ -45,6 +77,7 @@ func StructToMap(data interface{}) (map[string]interface{}, error) {
 	config := &mapstructure.DecoderConfig{
 		TagName:    "mapstructure",
 		Result:     &result,
+		DecodeHook: mapstructure.ComposeDecodeHookFunc(CustomTimeDecodeHook),
 		ZeroFields: false, // Avoid filling zero-valued fields in the map
 	}
 
@@ -80,11 +113,11 @@ func StructToMap(data interface{}) (map[string]interface{}, error) {
 			}
 			result[key] = updatedSlice
 		}
-		// if CheckMapWithTimeField(value) {
-		// 	timeValue := reflect.ValueOf(value)
-		// 	rawValue := timeValue.MapIndex(reflect.ValueOf("Time"))
-		// 	fmt.Println(rawValue)
-		// }
+		if CheckMapWithTimeField(value) {
+			timeValue := reflect.ValueOf(value)
+			val := timeValue.MapIndex(reflect.ValueOf("Time"))
+			result[key] = val.Interface()
+		}
 	}
 
 	ReplaceMapsWithRaw(result)

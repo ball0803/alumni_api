@@ -36,11 +36,13 @@ func AddUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
 		}
 
-		if err := validators.SameUser(c, id); err != nil {
-			return HandleFailWithStatus(c, err, logger)
+		err1 := validators.SameUser(c, id)
+		err2 := validators.UserAdmin(c)
+		if err1 != nil && err2 != nil {
+			return HandleFailWithStatus(c, err1, logger)
 		}
 
-		if err := encrypt.EncryptStruct(req, models.UserEncryptField); err != nil {
+		if err := encrypt.EncryptStruct(req, models.CompanyEncryptField); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -81,7 +83,7 @@ func UpdateUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		if err := encrypt.EncryptStruct(req, models.UserEncryptField); err != nil {
+		if err := encrypt.EncryptStruct(req, models.CompanyEncryptField); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 

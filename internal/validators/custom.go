@@ -3,21 +3,22 @@ package validators
 import (
 	"github.com/go-playground/validator/v10"
 	"reflect"
+	"regexp"
 	"strings"
 )
+
+func ValidatePhone(fl validator.FieldLevel) bool {
+	phoneRegex := `^\d{3}-\d{3}-\d{4}$`
+	re := regexp.MustCompile(phoneRegex)
+	return re.MatchString(fl.Field().String())
+}
 
 func nameValidation(fl validator.FieldLevel) bool {
 	firstName := fl.Parent().FieldByName("FirstName").String()
 	firstNameEng := fl.Parent().FieldByName("FirstNameEng").String()
-	lastName := fl.Parent().FieldByName("LastName").String()
-	lastNameEng := fl.Parent().FieldByName("LastNameEng").String()
 
 	// If FirstName is empty, FirstNameEng must be present
 	if firstName == "" && firstNameEng == "" {
-		return false
-	}
-	// If LastName is empty, LastNameEng must be present
-	if lastName == "" && lastNameEng == "" {
 		return false
 	}
 	return true

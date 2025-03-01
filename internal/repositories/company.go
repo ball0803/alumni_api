@@ -26,23 +26,26 @@ func AddUserCompany(ctx context.Context, driver neo4j.DriverWithContext, id stri
 
 	// Query to create or connect the company
 	query := `
-    MERGE (a:Company {name: $name, address: $address})
+    MERGE (a:Company {name: $name})
     ON CREATE SET a.company_id = $companyID
     WITH a
     MATCH (u:UserProfile {user_id: $userID})
     MERGE (u)-[r:HAS_WORK_WITH]->(a)
     SET r.position = $position,
+        r.salary_min = $salary_min,
+        r.salary_max = $salary_max,
         r.created_timestamp = timestamp()
   `
 
 	for _, company := range companies.Companies {
 		// Generate a new companyID only if the company is being created
 		params := map[string]interface{}{
-			"companyID": uuid.New().String(),
-			"userID":    id,
-			"name":      company.Company,
-			"address":   company.Address,
-			"position":  company.Position,
+			"companyID":  uuid.New().String(),
+			"userID":     id,
+			"name":       company.Company,
+			"position":   company.Position.Raw,
+			"salary_min": company.SalaryMin.Raw,
+			"salary_max": company.SalaryMax.Raw,
 		}
 		_, err = tx.Run(ctx, query, params)
 		if err != nil {
@@ -182,7 +185,7 @@ func FindCompanyAssociate(ctx context.Context, driver neo4j.DriverWithContext, c
   `
 
 	params := map[string]interface{}{
-		"name": company.Company.Raw,
+		"name": company.Company,
 	}
 
 	result, err := session.Run(ctx, query, params)

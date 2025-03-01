@@ -21,11 +21,11 @@ func AddStudentInfo(ctx context.Context, driver neo4j.DriverWithContext, id stri
     MATCH (u:UserProfile {user_id: $userID})
     RETURN u LIMIT 1
   `
-	userResult, err1 := session.Run(ctx, checkUserQuery, map[string]interface{}{
+	userResult, err := session.Run(ctx, checkUserQuery, map[string]interface{}{
 		"userID": id,
 	})
-	if err1 != nil {
-		logger.Error("Failed to check user existence", zap.Error(err1))
+	if err != nil {
+		logger.Error("Failed to check user existence", zap.Error(err))
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to check user existence")
 	}
 	if !userResult.Next(ctx) {
@@ -34,33 +34,43 @@ func AddStudentInfo(ctx context.Context, driver neo4j.DriverWithContext, id stri
 	}
 
 	query := `
-    MERGE (faculty:Faculty {name: $faculty})
-    MERGE (faculty)-[:HAS_DEPARTMENT]->(department:Department {name: $department})
-    MERGE (department)-[:HAS_FIELD]->(field:Field {name: $field})
-    MERGE (field)-[:HAS_STUDENT_TYPE]->(studentType:StudentType {name: $studentType})
-
-    WITH field, studentType
-    MATCH (u:UserProfile {user_id: $userID})
-    MERGE (u)-[:BELONGS_TO_FIELD]->(field)
-    MERGE (u)-[:BELONGS_TO_STUDENT_TYPE]->(studentType)
-  `
+      MERGE (faculty:Faculty {name: $faculty})
+      MERGE (faculty)-[:HAS_DEPARTMENT]->(department:Department {name: $department})
+      MERGE (department)-[:HAS_FIELD]->(field:Field {name: $field})
+    `
 
 	params := map[string]interface{}{
-		"userID":      id,
-		"faculty":     college_info.Faculty,
-		"department":  college_info.Department,
-		"field":       college_info.Field,
-		"studentType": college_info.StudentType,
+		"userID":     id,
+		"faculty":    college_info.Faculty,
+		"department": college_info.Department,
+		"field":      college_info.Field,
 	}
 
-	_, err2 := session.Run(ctx, query, params)
-	if err2 != nil {
-		logger.Error("Failed to create or connect student info", zap.Error(err2))
+	if college_info.StudentType != "" {
+		params["studentType"] = college_info.StudentType
+		query += `
+      MERGE (field)-[:HAS_STUDENT_TYPE]->(studentType:StudentType {name: $studentType})
+
+      WITH field, studentType
+      MATCH (u:UserProfile {user_id: $userID})
+      MERGE (u)-[:BELONGS_TO_FIELD]->(field)
+      MERGE (u)-[:BELONGS_TO_STUDENT_TYPE]->(studentType)
+    `
+	} else {
+		query += `
+      WITH field
+      MATCH (u:UserProfile {user_id: $userID})
+      MERGE (u)-[:BELONGS_TO_FIELD]->(field)
+    `
+	}
+
+	_, err = session.Run(ctx, query, params)
+	if err != nil {
+		logger.Error("Failed to create or connect student info", zap.Error(err))
 		return fiber.NewError(http.StatusInternalServerError, "Failed to create or connect student info")
 	}
 
 	return nil
-
 }
 
 func UpdateStudentInfo(ctx context.Context, driver neo4j.DriverWithContext, id string, college_info models.CollegeInfo, logger *zap.Logger) error {

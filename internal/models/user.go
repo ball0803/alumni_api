@@ -25,6 +25,8 @@ type UserProfile struct {
 type StudentInfo struct {
 	CollegeInfo    CollegeInfo                    `json:"college_info,omitempty" mapstructure:"college_info,squash" validate:"omitempty"`
 	EducationLevel string                         `json:"education_level,omitempty" mapstructure:"education_level,omitempty" validate:"omitempty"`
+	StudentID      string                         `json:"student_id,omitempty" mapstructure:"student_id,omitempty" validate:"omitempty"`
+	Generation     string                         `json:"generation,omitempty" mapstructure:"generation,omitempty" validate:"omitempty"`
 	AdmitYear      customtypes.Encrypted[int16]   `json:"admit_year,omitempty" mapstructure:"admit_year,omitempty" validate:"omitempty,gte=2510,lte=2600"`
 	GraduateYear   customtypes.Encrypted[int16]   `json:"graduate_year,omitempty" mapstructure:"graduate_year,omitempty" validate:"omitempty,gte=2530"`
 	GPAX           customtypes.Encrypted[float32] `json:"gpax,omitempty" mapstructure:"gpax,omitempty" validate:"omitempty,gte=0.0,lte=4.0"`
@@ -34,13 +36,15 @@ type CollegeInfo struct {
 	Faculty     string `json:"faculty,omitempty" mapstructure:"faculty,omitempty" validate:"required"`
 	Department  string `json:"department,omitempty" mapstructure:"department,omitempty" validate:"required"`
 	Field       string `json:"field,omitempty" mapstructure:"field,omitempty" validate:"required"`
-	StudentType string `json:"student_type,omitempty" mapstructure:"student_type,omitempty" validate:"required"`
+	StudentType string `json:"student_type,omitempty" mapstructure:"student_type,omitempty" validate:"omitempty"`
 }
 
 type Company struct {
-	Company  customtypes.Encrypted[string] `json:"name,omitempty" mapstructure:"name,omitempty" validate:"omitempty,min=2,max=100"`
-	Address  customtypes.Encrypted[string] `json:"address,omitempty" mapstructure:"address,omitempty" validate:"omitempty,max=200"`
-	Position customtypes.Encrypted[string] `json:"position,omitempty" mapstructure:"position,omitempty" validate:"omitempty,max=100"`
+	Company   string                        `json:"company,omitempty" mapstructure:"company,omitempty" validate:"omitempty,min=2,max=100"`
+	Address   string                        `json:"address,omitempty" mapstructure:"address,omitempty" validate:"omitempty,max=200"`
+	Position  customtypes.Encrypted[string] `json:"position,omitempty" mapstructure:"position,omitempty" validate:"omitempty,max=100"`
+	SalaryMin customtypes.Encrypted[string] `json:"salary_min,omitempty" mapstructure:"salary_min,omitempty" validate:"omitempty"`
+	SalaryMax customtypes.Encrypted[string] `json:"salary_max,omitempty" mapstructure:"salary_max,omitempty" validate:"omitempty"`
 }
 
 type Contact struct {
@@ -48,7 +52,7 @@ type Contact struct {
 	Github   string `json:"github,omitempty" mapstructure:"github" validate:"omitempty,url"`
 	Linkedin string `json:"linkedin,omitempty" mapstructure:"linkedin" validate:"omitempty,url"`
 	Facebook string `json:"facebook,omitempty" mapstructure:"facebook" validate:"omitempty,url"`
-	Phone    string `json:"phone,omitempty" mapstructure:"phone" validate:"omitempty,e164"`
+	Phone    string `json:"phone,omitempty" mapstructure:"phone" validate:"omitempty,phone"`
 }
 
 type Friend struct {

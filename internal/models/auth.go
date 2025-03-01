@@ -11,7 +11,7 @@ type Claims struct {
 }
 
 type Verify struct {
-	UserID            string `json:"user_id,omitempty" mapstructure:"user_id" validate:"required,uuid4`
+	UserID            string `json:"user_id,omitempty" mapstructure:"user_id" validate:"required,uuid4"`
 	VerificationToken string `json:"token,omitempty" mapstructure:"token"`
 	jwt.RegisteredClaims
 }
@@ -29,6 +29,6 @@ type LoginRequest struct {
 }
 
 type ReqistryRequest struct {
-	Username string `json:"username" mapstructure:"username" validate:"required,url"`
+	Username string `json:"username" mapstructure:"username" validate:"required"`
 	Password string `json:"password,omitempty" mapstructure:"password" validate:"required,min=8"`
 }

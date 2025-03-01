@@ -12,9 +12,10 @@ func EncryptStruct(inputStruct interface{}, fieldsGroups ...[]string) error {
 		// Find the fields to encrypt in the struct
 		for _, field := range fieldsToEncrypt {
 			fieldValue := utils.FindStructFields(inputStruct, []string{field})
+			fmt.Println(field, fieldValue)
 
 			if len(fieldValue) == 0 {
-				return fmt.Errorf("Field '%s' not found in the struct", field)
+				continue
 			}
 
 			for _, f := range fieldValue {
@@ -45,7 +46,7 @@ func DecryptStruct(inputStruct interface{}, fieldsGroups ...[]string) error {
 			fieldValue := utils.FindStructFields(inputStruct, []string{field})
 
 			if len(fieldValue) == 0 {
-				return fmt.Errorf("Field '%s' not found in the struct", field)
+				continue
 			}
 
 			for _, f := range fieldValue {

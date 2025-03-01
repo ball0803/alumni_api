@@ -31,8 +31,10 @@ func AddStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
 		}
 
-		if err := validators.SameUser(c, id); err != nil {
-			return HandleFailWithStatus(c, err, logger)
+		err1 := validators.SameUser(c, id)
+		err2 := validators.UserAdmin(c)
+		if err1 != nil && err2 != nil {
+			return HandleFailWithStatus(c, err1, logger)
 		}
 
 		if err := validators.Request(c, &req); err != nil {
@@ -68,8 +70,10 @@ func UpdateStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
 		}
 
-		if err := validators.SameUser(c, id); err != nil {
-			return HandleFailWithStatus(c, err, logger)
+		err1 := validators.SameUser(c, id)
+		err2 := validators.UserAdmin(c)
+		if err1 != nil && err2 != nil {
+			return HandleFailWithStatus(c, err1, logger)
 		}
 
 		if err := validators.Request(c, &req); err != nil {

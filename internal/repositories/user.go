@@ -52,15 +52,12 @@ func CreateProfile(ctx context.Context, driver neo4j.DriverWithContext, user mod
 	queryBuilder.WriteString("}) RETURN u.user_id AS user_id")
 	query = queryBuilder.String()
 
-	fmt.Println(params)
-	// fmt.Println(query)
-
 	// Run the query
-	// _, err = session.Run(ctx, query, params)
-	// if err != nil {
-	// 	logger.Error("Failed to create user", zap.Error(err))
-	// 	return nil, fiber.NewError(http.StatusInternalServerError, "Error creating user")
-	// }
+	_, err = session.Run(ctx, query, params)
+	if err != nil {
+		logger.Error("Failed to create user", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Error creating user")
+	}
 
 	// Prepare the result map
 	ret := map[string]interface{}{

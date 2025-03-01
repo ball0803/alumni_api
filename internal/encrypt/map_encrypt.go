@@ -15,7 +15,7 @@ func EncryptMaps(inputMaps interface{}, fieldsGroups ...[]string) error {
 			fieldMappings := utils.FindMapFields(inputMaps, []string{field})
 
 			if len(fieldMappings) == 0 {
-				return fmt.Errorf("Field '%s' not found in the map", field)
+				continue
 			}
 
 			// Encrypt all occurrences of the field
@@ -55,7 +55,7 @@ func DecryptMaps(inputMaps interface{}, fieldsGroups ...[]string) error {
 			fieldMappings := utils.FindMapFields(inputMaps, []string{field})
 
 			if len(fieldMappings) == 0 {
-				return fmt.Errorf("Field '%s' not found in the map", field)
+				continue
 			}
 
 			// Decrypt all occurrences of the field
