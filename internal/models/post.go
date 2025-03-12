@@ -26,3 +26,12 @@ type Like struct {
 	user_id  string
 	datetime string
 }
+
+type Report struct {
+	ID         string `json:"id,omitempty" mapstructure:"id" validate:"required,uuid4"`
+	UserID     string `json:"user_id,omitempty" mapstructure:"user_id" validate:"required,uuid4"`
+	Status     string `json:"status,omitempty" mapstructure:"status" validate:"omitempty,oneof=pending reviewed resolved"`
+	Type       string `json:"type,omitempty" mapstructure:"type" validate:"required,oneof=post comment user"`
+	Category   string `json:"category,omitempty" mapstructure:"category" validate:"required,oneof=spam harassment hate_speech misinformation other"`
+	Additional string `json:"additional,omitempty" mapstructure:"additional" validate:"omitempty,max=200"`
+}
