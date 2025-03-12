@@ -11,6 +11,22 @@ import (
 	"go.uber.org/zap"
 )
 
+func FetchReport(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		if err := validators.UserAdmin(c); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		data, err := repositories.FetchReport(c.Context(), driver, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		successMessage := "Fetch Report Succesfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, data, logger)
+	}
+}
+
 func Report(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		claim, ok := c.Locals("claims").(*models.Claims)

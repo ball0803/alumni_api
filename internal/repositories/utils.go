@@ -11,6 +11,44 @@ import (
 	"go.uber.org/zap"
 )
 
+func FetchReport(ctx context.Context, driver neo4j.DriverWithContext, logger *zap.Logger) ([]map[string]interface{}, error) {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeWrite,
+	})
+	defer session.Close(ctx)
+
+	query := `
+  MATCH (r:Report)
+  WHERE r.status = "pending"
+  RETURN r
+  LIMIT 100
+  `
+
+	var params = map[string]interface{}{}
+
+	result, err := session.Run(ctx, query, params)
+	if err != nil {
+		logger.Error("Failed to create post", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to create post")
+	}
+
+	records, err := result.Collect(ctx)
+	if err != nil {
+		logger.Error(models.ErrRetrievalFailed, zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, models.ErrRetrievalFailed)
+	}
+
+	var reports []map[string]interface{}
+
+	for _, record := range records {
+		reportMap := record.AsMap()
+		reports = append(reports, reportMap)
+	}
+
+	return reports, nil
+}
+
 func Report(ctx context.Context, driver neo4j.DriverWithContext, report models.Report, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
