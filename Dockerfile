@@ -1,5 +1,5 @@
 # Step 1: Build the Go application
-ARG GO_VERSION=1.21
+ARG GO_VERSION=1.24.1
 FROM golang:${GO_VERSION}-bookworm as builder
 
 WORKDIR /usr/src/app
