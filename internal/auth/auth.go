@@ -8,11 +8,21 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
 var jwtSecret = []byte(config.GetEnv("JWT_SECRET_KEY", "secret_key"))
+
+func ExtractJWT(c *fiber.Ctx) (string, bool) {
+	authHeader := c.Get("Authorization")
+	if authHeader == "" {
+		return "", false
+	}
+
+	return authHeader[len("Bearer "):], true
+}
 
 // GenerateJWT generates a JWT for a user
 func GenerateJWT(userID, role string, admitYear int) (string, error) {

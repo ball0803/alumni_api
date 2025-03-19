@@ -9,33 +9,31 @@ import (
 )
 
 func PostRoutes(group fiber.Router, driver neo4j.DriverWithContext, logger *zap.Logger) {
+
 	post := group.Group("/post")
-
-	post.Use(middlewares.JWTMiddleware(logger))
-
+	// accessible to public
 	post.Get("/all", controllers.GetAllPost(driver, logger))
-
 	post.Get("/:post_id", controllers.GetPostByID(driver, logger))
 
-	post.Post("", controllers.CreatePost(driver, logger))
+	postWithAuth := group.Group("/post")
+	postWithAuth.Use(middlewares.JWTMiddleware(logger))
 
-	post.Put("/:post_id", controllers.UpdatePostByID(driver, logger))
+	// post
+	postWithAuth.Post("", controllers.CreatePost(driver, logger))
+	postWithAuth.Put("/:post_id", controllers.UpdatePostByID(driver, logger))
+	postWithAuth.Delete("/:post_id", controllers.DeletePostByID(driver, logger))
 
-	post.Delete("/:post_id", controllers.DeletePostByID(driver, logger))
+	// like post
+	postWithAuth.Post("/:post_id/like", controllers.LikePost(driver, logger))
+	postWithAuth.Delete("/:post_id/like", controllers.UnlikePost(driver, logger))
 
-	post.Post("/:post_id/like", controllers.LikePost(driver, logger))
+	// comment post
+	postWithAuth.Post("/:post_id/comment", controllers.CommentPost(driver, logger))
+	postWithAuth.Post("/:post_id/comment/:comment_id", controllers.ReplyComment(driver, logger))
+	postWithAuth.Put("/:post_id/comment/:comment_id", controllers.UpdateCommentPost(driver, logger))
+	postWithAuth.Delete("/:post_id/comment/:comment_id", controllers.DeleteCommentPost(driver, logger))
 
-	post.Delete("/:post_id/like", controllers.UnlikePost(driver, logger))
-
-	post.Post("/:post_id/comment", controllers.CommentPost(driver, logger))
-
-	post.Post("/:post_id/comment/:comment_id", controllers.ReplyComment(driver, logger))
-
-	post.Put("/:post_id/comment/:comment_id", controllers.UpdateCommentPost(driver, logger))
-
-	post.Delete("/:post_id/comment/:comment_id", controllers.DeleteCommentPost(driver, logger))
-
-	post.Post("/comment/:comment_id/like", controllers.LikeComment(driver, logger))
-
-	post.Delete("/comment/:comment_id/like", controllers.UnlikeComment(driver, logger))
+	// like comment
+	postWithAuth.Post("/comment/:comment_id/like", controllers.LikeComment(driver, logger))
+	postWithAuth.Delete("/comment/:comment_id/like", controllers.UnlikeComment(driver, logger))
 }

@@ -10,12 +10,11 @@ import (
 
 func JWTMiddleware(logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		authHeader := c.Get("Authorization")
-		if authHeader == "" {
+		tokenString, ok := auth.ExtractJWT(c)
+		if !ok {
 			return controllers.HandleFail(c, fiber.StatusUnauthorized, "Missing Token", logger, nil)
 		}
 
-		tokenString := authHeader[len("Bearer "):]
 		claims, err := auth.ParseJWT(tokenString)
 		if err != nil {
 			return controllers.HandleFail(c, fiber.StatusUnauthorized, "Invalid or expired token", logger, nil)

@@ -1,8 +1,10 @@
 package controllers
 
 import (
+	"alumni_api/internal/auth"
 	"alumni_api/internal/models"
 	"alumni_api/internal/repositories"
+	"alumni_api/internal/services"
 	"alumni_api/internal/validators"
 	"fmt"
 
@@ -31,6 +33,15 @@ func GetPostByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 		// if err := validators.UUID(postID); err != nil {
 		// 	return HandleFailWithStatus(c, err, logger)
 		// }
+
+		if tokenString, ok := auth.ExtractJWT(c); ok {
+			if claims, err := auth.ParseJWT(tokenString); err == nil {
+				err = services.AddView(c.Context(), driver, claims.UserID, postID, logger)
+				if err != nil {
+					return HandleErrorWithStatus(c, err, logger)
+				}
+			}
+		}
 
 		posts, err := repositories.GetPostByID(c.Context(), driver, postID, logger)
 		if err != nil {

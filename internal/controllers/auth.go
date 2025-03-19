@@ -12,6 +12,15 @@ import (
 	"go.uber.org/zap"
 )
 
+func ExtractJWT(c *fiber.Ctx, logger *zap.Logger) (string, bool) {
+	authHeader := c.Get("Authorization")
+	if authHeader == "" {
+		return "", false
+	}
+
+	return authHeader[len("Bearer "):], true
+}
+
 func Login(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req models.LoginRequest
