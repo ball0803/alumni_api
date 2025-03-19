@@ -260,7 +260,7 @@ const VerifyChangeMail = `
                 <h2 style="color: #1e88e5; text-align: center;">Verify Your Email Address</h2>
                 <p>Hello,</p>
                 <p>Use the verification click verify button below to complete your email address associated:</p>
-                <a href="http://localhost:3000/v1/auth/verify-email?token=%s" class="button">Verify Email</a>
+                <a href="http://alumni.cpe.kmutt.ac.th/verify-email?token=%s" class="button">Verify Email</a>
                 <p class="help-text">If you didn't register CPE Alumni account, you can safely ignore this email.</p>
             </div>
             <div class="footer">
