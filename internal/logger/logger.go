@@ -8,20 +8,22 @@ import (
 func NewLogger() (*zap.Logger, error) {
 	var config zap.Config
 
+	logFile := "C:/logs/fiber-api.log" // Change this path as needed
+
 	if os.Getenv("ENV") == "dev" {
 		config = zap.Config{
 			Encoding:         "console",
 			EncoderConfig:    zap.NewDevelopmentEncoderConfig(),
-			OutputPaths:      []string{"stdout"},
-			ErrorOutputPaths: []string{"stderr"},
+			OutputPaths:      []string{"stdout", logFile},
+			ErrorOutputPaths: []string{"stderr", logFile},
 			Level:            zap.NewAtomicLevelAt(zap.DebugLevel),
 		}
 	} else {
 		config = zap.Config{
 			Encoding:         "json",
 			EncoderConfig:    zap.NewProductionEncoderConfig(),
-			OutputPaths:      []string{"stdout"},
-			ErrorOutputPaths: []string{"stderr"},
+			OutputPaths:      []string{"stdout", logFile},
+			ErrorOutputPaths: []string{"stderr", logFile},
 			Level:            zap.NewAtomicLevelAt(zap.InfoLevel),
 		}
 	}

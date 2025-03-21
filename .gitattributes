@@ -1,0 +1,6 @@
+./docker-compose.yml merge=ours
+./Dockerfile merge=ours
+./fly.toml merge=ours
+./air.toml merge=ours
+./loki-config.yaml merge=ours
+./promtail-config.yaml merge=ours
