@@ -12,6 +12,15 @@ import (
 	"go.uber.org/zap"
 )
 
+func ExtractJWT(c *fiber.Ctx, logger *zap.Logger) (string, bool) {
+	authHeader := c.Get("Authorization")
+	if authHeader == "" {
+		return "", false
+	}
+
+	return authHeader[len("Bearer "):], true
+}
+
 func Login(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req models.LoginRequest
@@ -73,7 +82,7 @@ func Registry(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler 
 	}
 }
 
-func Verify(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+func VerifyAccount(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		token := c.Query("token")
 
@@ -91,7 +100,124 @@ func Verify(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", claim.UserID), logger, nil)
 		}
 
-		err = repositories.Verify(c.Context(), driver, claim.UserID, claim.VerificationToken, logger)
+		err = repositories.VerifyAccount(c.Context(), driver, claim.UserID, claim.VerificationToken, logger)
+		if err != nil {
+			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
+		}
+
+		return c.Redirect("http://localhost:3000/v1", fiber.StatusFound)
+	}
+}
+
+func RequestChangePassword(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		claim, ok := c.Locals("claims").(*models.Claims)
+		if !ok {
+			return HandleFail(c, fiber.StatusUnauthorized, "Unauthorized claim", logger, nil)
+		}
+
+		exists, err := services.UserExist(c.Context(), driver, claim.UserID, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", claim.UserID), logger, nil)
+		}
+
+		err = repositories.RequestChangePassword(c.Context(), driver, claim.UserID, logger)
+		if err != nil {
+			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
+		}
+
+		successMessage := "Request Reset Password Succesfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
+	}
+}
+
+func ChangePassword(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		var req models.ResetPassword
+
+		if err := validators.Request(c, &req); err != nil {
+			return HandleFail(c, fiber.StatusBadRequest, "Validation failed", logger, err)
+		}
+
+		claim, err := auth.ParseVerification(req.ResetJWT)
+		if err != nil {
+			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
+		}
+
+		exists, err := services.UserExist(c.Context(), driver, claim.UserID, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", claim.UserID), logger, nil)
+		}
+
+		err = repositories.ChangePassword(c.Context(), driver, claim.UserID, req.Password, claim.VerificationToken, logger)
+		if err != nil {
+			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
+		}
+
+		successMessage := "Change Password Succesfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
+	}
+}
+
+func RequestChangeEmail(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		var req models.ChangeEmail
+
+		if err := validators.Request(c, &req); err != nil {
+			return HandleFail(c, fiber.StatusBadRequest, "Validation failed", logger, err)
+		}
+
+		claim, ok := c.Locals("claims").(*models.Claims)
+		if !ok {
+			return HandleFail(c, fiber.StatusUnauthorized, "Unauthorized claim", logger, nil)
+		}
+
+		exists, err := services.UserExist(c.Context(), driver, claim.UserID, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", claim.UserID), logger, nil)
+		}
+
+		err = repositories.RequestChangeMail(c.Context(), driver, claim.UserID, req.Email, logger)
+		if err != nil {
+			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
+		}
+
+		successMessage := "Request Reset Password Succesfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
+	}
+}
+
+func VerifyEmail(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		token := c.Query("token")
+
+		claim, err := auth.ParseVerification(token)
+		if err != nil {
+			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
+		}
+
+		exists, err := services.UserExist(c.Context(), driver, claim.UserID, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", claim.UserID), logger, nil)
+		}
+
+		err = repositories.VerifyEmail(c.Context(), driver, claim.UserID, claim.VerificationToken, logger)
 		if err != nil {
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}
