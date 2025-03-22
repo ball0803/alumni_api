@@ -84,7 +84,7 @@ func UpdatePostByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		userID, err := repositories.GetPostUserID(c.Context(), driver, postID, logger)
+		userID, err := services.GetAuthorUserID(c.Context(), driver, postID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -117,7 +117,7 @@ func DeletePostByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		userID, err := repositories.GetPostUserID(c.Context(), driver, postID, logger)
+		userID, err := services.GetAuthorUserID(c.Context(), driver, postID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -248,7 +248,7 @@ func UpdateCommentPost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		userID, err := repositories.GetCommentUserID(c.Context(), driver, commentID, logger)
+		userID, err := services.GetCommentUserID(c.Context(), driver, commentID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -281,7 +281,7 @@ func DeleteCommentPost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		userID, err := repositories.GetCommentUserID(c.Context(), driver, commentID, logger)
+		userID, err := services.GetCommentUserID(c.Context(), driver, commentID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}

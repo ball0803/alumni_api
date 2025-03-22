@@ -1,12 +1,73 @@
 version: "3.8"
 
 services:
+  loki:
+    image: grafana/loki:3.4.2
+    container_name: loki
+    restart: always
+    volumes:
+      - ./config/loki-config.yaml:/etc/loki/loki-config.yaml
+    ports:
+      - "3100:3100"
+    networks:
+      - backend
+    command: -config.file=/etc/loki/loki-config.yaml
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        mode: non-blocking
+        max-buffer-size: 4m
+        loki-retries: "3"
+
+  promtail:
+    image: grafana/promtail:3.4.2
+    container_name: promtail
+    networks:
+      - backend
+    volumes:
+      - ./config/promtail-config.yaml:/etc/promtail/config.yaml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yaml
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        mode: non-blocking
+        max-buffer-size: 4m
+        loki-retries: "3"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: always
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+      - GF_SERVER_DOMAIN=http://localhost/monitor/
+      - GF_SERVER_ROOT_URL=http://localhost/monitor/
+    depends_on:
+      - loki
+    volumes:
+      - ./config/loki-datasource.yml:/etc/grafana/provisioning/datasources/loki-datasource.yml
+    ports:
+      - "3000:3000"
+    networks:
+      - backend
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        mode: non-blocking
+        max-buffer-size: 4m
+        loki-retries: "3"
+
   neo4j:
     image: neo4j:5.26.4
     container_name: neo4j
     restart: always
     environment:
-      - NEO4J_AUTH=${NEO4J_LOCAL_USERNAME}/${NEO4J_LOCAL_PASSWORD}
+      - NEO4J_AUTH=${NEO4J_LOCAL_USERNAME}/${NEO4J_LOCAL_COTAINER_PASSWORD}
     ports:
       - "7687:7687"
       - "7474:7474"
@@ -14,6 +75,13 @@ services:
       - ~/neo4j/data:/data
     networks:
       - backend
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        mode: non-blocking
+        max-buffer-size: 4m
+        loki-retries: "3"
 
   api:
     build: .
@@ -23,9 +91,9 @@ services:
       - neo4j
     environment:
       - DB_ENV=${DB_ENV}
-      - NEO4J_LOCAL_URI=${NEO4J_LOCAL_URI}
+      - NEO4J_LOCAL_URI=${NEO4J_LOCAL_CONTAINER_URI}
       - NEO4J_LOCAL_USERNAME=${NEO4J_LOCAL_USERNAME}
-      - NEO4J_LOCAL_PASSWORD=${NEO4J_LOCAL_PASSWORD}
+      - NEO4J_LOCAL_PASSWORD=${NEO4J_LOCAL_CONTAINER_PASSWORD}
       - NEO4J_AURA_URI=${NEO4J_AURA_URI}
       - NEO4J_AURA_USERNAME=${NEO4J_AURA_USERNAME}
       - NEO4J_AURA_PASSWORD=${NEO4J_AURA_PASSWORD}
@@ -37,6 +105,14 @@ services:
       - "8080:8080"
     networks:
       - backend
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        mode: non-blocking
+        max-buffer-size: 4m
+        loki-retries: "3"
+
 
   nginx:
     image: nginx:latest
@@ -47,46 +123,16 @@ services:
     ports:
       - "80:80"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./config/nginx.conf:/etc/nginx/nginx.conf:ro
     networks:
       - backend
-
-  loki:
-    image: grafana/loki:3.4.2
-    container_name: loki
-    restart: always
-    volumes:
-      - ./loki-config.yaml:/etc/loki/loki-config.yaml
-    ports:
-      - "3100:3100"
-    networks:
-      - backend
-    command: -config.file=/etc/loki/loki-config.yaml
-
-  promtail:
-    image: grafana/promtail:3.4.2
-    container_name: promtail
-    networks:
-      - backend
-    volumes:
-      - ./promtail-config.yaml:/etc/promtail/config.yaml
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-    command: -config.file=/etc/promtail/config.yaml
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    restart: always
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
-    depends_on:
-      - loki
-    volumes:
-      - ./loki-datasource.yml:/etc/grafana/provisioning/datasources/loki-datasource.yml
-    ports:
-      - "3000:3000"
-
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        mode: non-blocking
+        max-buffer-size: 4m
+        loki-retries: "3"
 
 volumes:
   neo4j_data:
