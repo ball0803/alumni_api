@@ -86,3 +86,67 @@ func GetPostStat(ctx context.Context, driver neo4j.DriverWithContext, logger *za
 
 	return posts, nil
 }
+
+func GetRegistryStat(ctx context.Context, driver neo4j.DriverWithContext, logger *zap.Logger) (map[string]interface{}, error) {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeRead,
+	})
+	defer session.Close(ctx)
+
+	query := `
+    MATCH (u:UserProfile)
+    WHERE u.generation IS NOT NULL
+    WITH
+      count(u) AS total_users,
+      sum(CASE WHEN u.is_verify = true THEN 1 ELSE 0 END) AS verified_users,
+      collect(u) AS all_users
+
+    UNWIND all_users AS user
+    WITH
+      total_users,
+      verified_users,
+      user.generation AS generation,
+      user.is_verify AS is_verified
+    WITH
+      generation,
+      count(*) AS users_in_generation,
+      sum(CASE WHEN is_verified = true THEN 1 ELSE 0 END) AS verified_in_generation,
+      sum(CASE WHEN is_verified = true THEN 1 ELSE 0 END) * 1.0 / count(*) AS generation_verification_ratio,
+      total_users,
+      verified_users
+    ORDER BY generation
+    WITH
+      collect({
+        generation: generation,
+        users_in_generation: users_in_generation,
+        verified_in_generation: verified_in_generation,
+        generation_verification_ratio: generation_verification_ratio
+      }) AS generation_stats,
+      total_users,
+      verified_users
+
+    RETURN
+      generation_stats,
+      {
+        total_users: total_users,
+        verified_users: verified_users,
+        overall_verification_ratio: verified_users * 1.0 / total_users
+      } AS overall_stats
+  `
+
+	result, err := session.Run(ctx, query, nil)
+	if err != nil {
+		logger.Error("Failed to retrieve registry stat", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to retrieve posts")
+	}
+
+	// Collect the results
+	record, err := result.Single(ctx)
+	if err != nil {
+		logger.Error("Failed to collect results", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to collect results")
+	}
+
+	return record.AsMap(), nil
+}

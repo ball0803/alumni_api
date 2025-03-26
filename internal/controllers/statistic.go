@@ -24,3 +24,19 @@ func GetPostStat(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 		return HandleSuccess(c, fiber.StatusOK, successMessage, posts, logger)
 	}
 }
+
+func GetRegistryStat(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		if err := validators.UserAdmin(c); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		posts, err := repositories.GetRegistryStat(c.Context(), driver, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		successMessage := "Get Registry Statistic Sucessfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, posts, logger)
+	}
+}
