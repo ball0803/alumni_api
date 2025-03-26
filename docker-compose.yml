@@ -67,7 +67,7 @@ services:
     container_name: neo4j
     restart: always
     environment:
-      - NEO4J_AUTH=${NEO4J_LOCAL_USERNAME}/${NEO4J_LOCAL_COTAINER_PASSWORD}
+      - NEO4J_AUTH=${NEO4J_LOCAL_USERNAME}/${NEO4J_LOCAL_CONTAINER_PASSWORD}
     ports:
       - "7687:7687"
       - "7474:7474"
