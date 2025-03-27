@@ -13,6 +13,12 @@ func ValidatePhone(fl validator.FieldLevel) bool {
 	return re.MatchString(fl.Field().String())
 }
 
+func CPEGenerationValidation(fl validator.FieldLevel) bool {
+	value := fl.Field().String()
+	matched, _ := regexp.MatchString(`^CPE[1-9][0-9]*$`, value)
+	return matched
+}
+
 func nameValidation(fl validator.FieldLevel) bool {
 	firstName := fl.Parent().FieldByName("FirstName").String()
 	firstNameEng := fl.Parent().FieldByName("FirstNameEng").String()
