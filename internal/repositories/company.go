@@ -24,29 +24,36 @@ func AddUserCompany(ctx context.Context, driver neo4j.DriverWithContext, id stri
 		return nil, fiber.NewError(fiber.StatusInternalServerError, "Failed to begin transaction")
 	}
 
-	// Query to create or connect the company
-	query := `
-    MERGE (a:Company {name: $name})
-    ON CREATE SET a.company_id = $companyID
-    WITH a
-    MATCH (u:UserProfile {user_id: $userID})
-    MERGE (u)-[r:HAS_WORK_WITH]->(a)
-    SET r.position = $position,
-        r.salary_min = $salary_min,
-        r.salary_max = $salary_max,
-        r.created_timestamp = timestamp()
-  `
-
 	for _, company := range companies.Companies {
+
+		query := `
+      MERGE (a:Company {name: $name})
+      ON CREATE SET a.company_id = $companyID
+      WITH a
+      MATCH (u:UserProfile {user_id: $userID})
+      MERGE (u)-[r:HAS_WORK_WITH]->(a)
+      SET r.created_timestamp = timestamp()
+    `
 		// Generate a new companyID only if the company is being created
 		params := map[string]interface{}{
-			"companyID":  uuid.New().String(),
-			"userID":     id,
-			"name":       company.Company,
-			"position":   company.Position.Raw,
-			"salary_min": company.SalaryMin.Raw,
-			"salary_max": company.SalaryMax.Raw,
+			"companyID": uuid.New().String(),
+			"userID":    id,
+			"name":      company.Company,
 		}
+
+		if len(company.Position.Raw) != 0 {
+			query += `,r.position = $position`
+			params["position"] = company.Position.Raw
+		}
+		if len(company.SalaryMax.Raw) != 0 {
+			query += `,r.salary_max = $salary_max`
+			params["salary_max"] = company.SalaryMax.Raw
+		}
+		if len(company.SalaryMin.Raw) != 0 {
+			query += `,r.salary_min = $salary_min`
+			params["salary_min"] = company.SalaryMin.Raw
+		}
+
 		_, err = tx.Run(ctx, query, params)
 		if err != nil {
 			logger.Error("Failed to create or connect user company info", zap.Error(err))
@@ -55,7 +62,7 @@ func AddUserCompany(ctx context.Context, driver neo4j.DriverWithContext, id stri
 		}
 	}
 
-	query = `
+	query := `
     MATCH (u:UserProfile {user_id: $userID})-[r:HAS_WORK_WITH]->(c:Company)
     RETURN
       c.name AS company,

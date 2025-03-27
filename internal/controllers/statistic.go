@@ -65,13 +65,13 @@ func GetGenerationSTStat(driver neo4j.DriverWithContext, logger *zap.Logger) fib
 	}
 }
 
-func GetUserJob(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+func GetUserSalary(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		if err := validators.UserAdmin(c); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		user, err := repositories.GetUserJob(c.Context(), driver, logger)
+		user, err := repositories.GetUserSalary(c.Context(), driver, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}

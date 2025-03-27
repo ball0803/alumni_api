@@ -214,7 +214,7 @@ func GetGenerationSTStat(ctx context.Context, driver neo4j.DriverWithContext, ge
 	return gens, nil
 }
 
-func GetUserJob(ctx context.Context, driver neo4j.DriverWithContext, logger *zap.Logger) ([]map[string]interface{}, error) {
+func GetUserSalary(ctx context.Context, driver neo4j.DriverWithContext, logger *zap.Logger) ([]map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeRead,
@@ -223,12 +223,11 @@ func GetUserJob(ctx context.Context, driver neo4j.DriverWithContext, logger *zap
 
 	query := `
     MATCH (u:UserProfile)-[r:HAS_WORK_WITH]->(c:Company)
+    WHERE r.salary_max IS NOT NULL
     RETURN
       u.generation AS gen,
-      c.name AS company,
-      r.postion AS position
-      // r.salary_max AS salary_max,
-      // r.salary_min AS salary_min
+      r.salary_max AS salary_max,
+      r.salary_min AS salary_min
   `
 	result, err := session.Run(ctx, query, nil)
 	if err != nil {
