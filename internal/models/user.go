@@ -43,8 +43,8 @@ type Company struct {
 	Company   string                        `json:"company,omitempty" mapstructure:"company,omitempty" validate:"omitempty,min=2,max=100"`
 	Address   string                        `json:"address,omitempty" mapstructure:"address,omitempty" validate:"omitempty,max=200"`
 	Position  customtypes.Encrypted[string] `json:"position,omitempty" mapstructure:"position,omitempty" validate:"omitempty,max=100"`
-	SalaryMin customtypes.Encrypted[string] `json:"salary_min,omitempty" mapstructure:"salary_min,omitempty" validate:"omitempty"`
-	SalaryMax customtypes.Encrypted[string] `json:"salary_max,omitempty" mapstructure:"salary_max,omitempty" validate:"omitempty"`
+	SalaryMin customtypes.Encrypted[int32]  `json:"salary_min,omitempty" mapstructure:"salary_min,omitempty" validate:"omitempty"`
+	SalaryMax customtypes.Encrypted[int32]  `json:"salary_max,omitempty" mapstructure:"salary_max,omitempty" validate:"omitempty"`
 }
 
 type Contact struct {

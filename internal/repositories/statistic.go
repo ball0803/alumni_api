@@ -213,3 +213,40 @@ func GetGenerationSTStat(ctx context.Context, driver neo4j.DriverWithContext, ge
 
 	return gens, nil
 }
+
+func GetUserJob(ctx context.Context, driver neo4j.DriverWithContext, logger *zap.Logger) ([]map[string]interface{}, error) {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeRead,
+	})
+	defer session.Close(ctx)
+
+	query := `
+    MATCH (u:UserProfile)-[r:HAS_WORK_WITH]->(c:Company)
+    RETURN
+      u.generation AS gen,
+      c.name AS company,
+      r.postion AS position
+      // r.salary_max AS salary_max,
+      // r.salary_min AS salary_min
+  `
+	result, err := session.Run(ctx, query, nil)
+	if err != nil {
+		logger.Error("Failed to retrieve posts", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to retrieve posts")
+	}
+
+	records, err := result.Collect(ctx)
+	if err != nil {
+		logger.Error("Failed to collect results", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to collect results")
+	}
+
+	var users []map[string]interface{}
+
+	for _, record := range records {
+		users = append(users, record.AsMap())
+	}
+
+	return users, nil
+}

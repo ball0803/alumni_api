@@ -42,17 +42,21 @@ func AddUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFailWithStatus(c, err1, logger)
 		}
 
-		if err := encrypt.EncryptStruct(req, models.CompanyEncryptField); err != nil {
+		if err := encrypt.EncryptStruct(&req, models.CompanyEncryptField); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err = repositories.AddUserCompany(c.Context(), driver, id, req, logger)
+		companies, err := repositories.AddUserCompany(c.Context(), driver, id, req, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
 
+		if err := encrypt.DecryptMaps(companies, models.CompanyDecryptField); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
 		successMessage := "User profile updated successfully"
-		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
+		return HandleSuccess(c, fiber.StatusOK, successMessage, companies, logger)
 	}
 }
 
@@ -83,7 +87,7 @@ func UpdateUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		if err := encrypt.EncryptStruct(req, models.CompanyEncryptField); err != nil {
+		if err := encrypt.EncryptStruct(&req, models.CompanyEncryptField); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
@@ -135,7 +139,7 @@ func FindCompanyAssociate(driver neo4j.DriverWithContext, logger *zap.Logger) fi
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		if err := encrypt.EncryptStruct(req, models.CompanyEncryptField); err != nil {
+		if err := encrypt.EncryptStruct(&req, models.CompanyEncryptField); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
