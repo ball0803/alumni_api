@@ -21,6 +21,12 @@ var CompanyEncryptField = []string{
 	"Companies.SalaryMax",
 }
 
+var CompanyDecryptField = []string{
+	"position",
+	"salary_min",
+	"salary_max",
+}
+
 var UserEncryptField = []string{
 	"StudentInfo.GPAX",
 	"StudentInfo.AdmitYear",

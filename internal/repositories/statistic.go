@@ -150,3 +150,102 @@ func GetRegistryStat(ctx context.Context, driver neo4j.DriverWithContext, logger
 
 	return record.AsMap(), nil
 }
+
+func GetGenerationSTStat(ctx context.Context, driver neo4j.DriverWithContext, generation []string, logger *zap.Logger) ([]map[string]interface{}, error) {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeRead,
+	})
+	defer session.Close(ctx)
+
+	query := `
+    WITH $generation AS target_generations
+    UNWIND target_generations AS gen
+
+    // First get all student types for this generation
+    OPTIONAL MATCH (st:StudentType)<--(u:UserProfile)
+    WHERE u.generation = gen
+    WITH gen, collect(DISTINCT st) AS student_types
+
+    // Then count users for each student type
+    UNWIND student_types AS st
+    WITH gen, st.name AS student_type, 
+        SIZE([(st)<--(u:UserProfile) WHERE u.generation = gen | u]) AS count
+
+    // Group by generation
+    WITH gen, 
+        collect(student_type) AS student_types,
+        collect(count) AS counts
+
+    // Format the final output
+    RETURN {
+        gen: gen,
+      data: {
+        key: student_types,
+        value: counts
+      }
+    } AS generation_data
+  `
+
+	params := map[string]interface{}{
+		"generation": generation,
+	}
+
+	// Run the query
+	result, err := session.Run(ctx, query, params)
+	if err != nil {
+		logger.Error("Failed to retrieve posts", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to retrieve posts")
+	}
+
+	// Collect the results
+	records, err := result.Collect(ctx)
+	if err != nil {
+		logger.Error("Failed to collect results", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to collect results")
+	}
+
+	var gens []map[string]interface{}
+
+	for _, record := range records {
+		gens = append(gens, record.AsMap())
+	}
+
+	return gens, nil
+}
+
+func GetUserSalary(ctx context.Context, driver neo4j.DriverWithContext, logger *zap.Logger) ([]map[string]interface{}, error) {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeRead,
+	})
+	defer session.Close(ctx)
+
+	query := `
+    MATCH (u:UserProfile)-[r:HAS_WORK_WITH]->(c:Company)
+    WHERE r.salary_max IS NOT NULL
+    RETURN
+      u.generation AS gen,
+      r.salary_max AS salary_max,
+      r.salary_min AS salary_min
+  `
+	result, err := session.Run(ctx, query, nil)
+	if err != nil {
+		logger.Error("Failed to retrieve posts", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to retrieve posts")
+	}
+
+	records, err := result.Collect(ctx)
+	if err != nil {
+		logger.Error("Failed to collect results", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to collect results")
+	}
+
+	var users []map[string]interface{}
+
+	for _, record := range records {
+		users = append(users, record.AsMap())
+	}
+
+	return users, nil
+}

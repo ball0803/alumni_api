@@ -10,7 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func AddUserCompany(ctx context.Context, driver neo4j.DriverWithContext, id string, companies models.UserRequestCompany, logger *zap.Logger) error {
+func AddUserCompany(ctx context.Context, driver neo4j.DriverWithContext, id string, companies models.UserRequestCompany, logger *zap.Logger) ([]map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -21,48 +21,88 @@ func AddUserCompany(ctx context.Context, driver neo4j.DriverWithContext, id stri
 	tx, err := session.BeginTransaction(ctx)
 	if err != nil {
 		logger.Error("Failed to begin transaction", zap.Error(err))
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to begin transaction")
+		return nil, fiber.NewError(fiber.StatusInternalServerError, "Failed to begin transaction")
 	}
 
-	// Query to create or connect the company
-	query := `
-    MERGE (a:Company {name: $name})
-    ON CREATE SET a.company_id = $companyID
-    WITH a
-    MATCH (u:UserProfile {user_id: $userID})
-    MERGE (u)-[r:HAS_WORK_WITH]->(a)
-    SET r.position = $position,
-        r.salary_min = $salary_min,
-        r.salary_max = $salary_max,
-        r.created_timestamp = timestamp()
-  `
-
 	for _, company := range companies.Companies {
+
+		query := `
+      MERGE (a:Company {name: $name})
+      ON CREATE SET a.company_id = $companyID
+      WITH a
+      MATCH (u:UserProfile {user_id: $userID})
+      MERGE (u)-[r:HAS_WORK_WITH]->(a)
+      SET r.created_timestamp = timestamp()
+    `
 		// Generate a new companyID only if the company is being created
 		params := map[string]interface{}{
-			"companyID":  uuid.New().String(),
-			"userID":     id,
-			"name":       company.Company,
-			"position":   company.Position.Raw,
-			"salary_min": company.SalaryMin.Raw,
-			"salary_max": company.SalaryMax.Raw,
+			"companyID": uuid.New().String(),
+			"userID":    id,
+			"name":      company.Company,
 		}
+
+		if len(company.Position.Raw) != 0 {
+			query += `,r.position = $position`
+			params["position"] = company.Position.Raw
+		}
+		if len(company.SalaryMax.Raw) != 0 {
+			query += `,r.salary_max = $salary_max`
+			params["salary_max"] = company.SalaryMax.Raw
+		}
+		if len(company.SalaryMin.Raw) != 0 {
+			query += `,r.salary_min = $salary_min`
+			params["salary_min"] = company.SalaryMin.Raw
+		}
+
 		_, err = tx.Run(ctx, query, params)
 		if err != nil {
 			logger.Error("Failed to create or connect user company info", zap.Error(err))
 			_ = tx.Rollback(ctx)
-			return fiber.NewError(fiber.StatusInternalServerError, "Failed to create or connect user company info")
+			return nil, fiber.NewError(fiber.StatusInternalServerError, "Failed to create or connect user company info")
 		}
+	}
+
+	query := `
+    MATCH (u:UserProfile {user_id: $userID})-[r:HAS_WORK_WITH]->(c:Company)
+    RETURN
+      c.name AS company,
+      r.position AS position,
+      r.salary_min AS salary_min,
+      r.salary_max AS salary_max
+  `
+
+	params := map[string]interface{}{
+		"userID": id,
+	}
+
+	result, err := tx.Run(ctx, query, params)
+	if err != nil {
+		logger.Error("Failed to create or connect user company info", zap.Error(err))
+		_ = tx.Rollback(ctx)
+		return nil, fiber.NewError(fiber.StatusInternalServerError, "Failed to create or connect user company info"+err.Error())
+	}
+
+	records, err := result.Collect(ctx)
+	if err != nil {
+		logger.Error("Failed to collect results", zap.Error(err))
+		return nil, fiber.NewError(fiber.StatusInternalServerError, "Failed to collect results")
+	}
+
+	var user_companies []map[string]interface{}
+
+	// Iterate over the records and prepare the results
+	for _, record := range records {
+		user_companies = append(user_companies, record.AsMap())
 	}
 
 	// Commit the transaction
 	if err = tx.Commit(ctx); err != nil {
 		tx.Rollback(ctx)
 		logger.Error("Failed to commit transaction", zap.Error(err))
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to commit transaction")
+		return nil, fiber.NewError(fiber.StatusInternalServerError, "Failed to commit transaction")
 	}
 
-	return nil
+	return user_companies, nil
 }
 
 func UpdateUserCompany(ctx context.Context, driver neo4j.DriverWithContext, userID, companyID string, company models.UserCompanyUpdateRequest, logger *zap.Logger) error {

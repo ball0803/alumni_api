@@ -16,6 +16,7 @@ func Init() {
 	validate.RegisterValidation("encrypted", validateEncrypted)
 	validate.RegisterValidation("encrypted_dynamic", validateEncryptedGeneric)
 	validate.RegisterValidation("customname", nameValidation)
+	validate.RegisterValidation("cpe_generation", CPEGenerationValidation)
 	validate.RegisterValidation("phone", ValidatePhone)
 }
 
