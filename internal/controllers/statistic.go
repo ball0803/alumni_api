@@ -84,3 +84,23 @@ func GetUserSalary(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Han
 		return HandleSuccess(c, fiber.StatusOK, successMessage, user, logger)
 	}
 }
+
+func GetUserJob(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		if err := validators.UserAdmin(c); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		user, err := repositories.GetUserJob(c.Context(), driver, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if err := encrypt.DecryptMaps(user, models.CompanyDecryptField); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		successMessage := "User retrieved successfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, user, logger)
+	}
+}
