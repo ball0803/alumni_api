@@ -243,3 +243,67 @@ func CheckAlumniExist(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.
 		return HandleSuccess(c, fiber.StatusOK, successMessage, data, logger)
 	}
 }
+
+func RequestAlumnusRole(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		claim, ok := c.Locals("claims").(*models.Claims)
+		if !ok {
+			return HandleFail(c, fiber.StatusUnauthorized, "Unauthorized claim", logger, nil)
+		}
+
+		exists, err := services.UserExist(c.Context(), driver, claim.UserID, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", claim.UserID), logger, nil)
+		}
+
+		err = repositories.RequestAlumnusRole(c.Context(), driver, claim.ID, logger)
+		if err != nil {
+			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
+		}
+
+		successMessage := "Get Request Succesfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
+	}
+}
+
+func ConfirmAlumnusRole(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		var req models.RequestRequest
+
+		if err := validators.UserAdmin(c); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		if err := validators.Request(c, &req); err != nil {
+			return HandleFail(c, fiber.StatusBadRequest, "Validation failed", logger, err)
+		}
+
+		err := repositories.ConfirmAlumnusRole(c.Context(), driver, req.RequestID, logger)
+		if err != nil {
+			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
+		}
+
+		successMessage := "Request Email Checkup Succesfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
+	}
+}
+
+func GetAllRequest(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		if err := validators.UserAdmin(c); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		data, err := repositories.GetAllRequest(c.Context(), driver, logger)
+		if err != nil {
+			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
+		}
+
+		successMessage := "Get Request Succesfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, data, logger)
+	}
+}

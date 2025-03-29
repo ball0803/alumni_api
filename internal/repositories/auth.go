@@ -579,3 +579,133 @@ func CheckExistAlumni(ctx context.Context, driver neo4j.DriverWithContext, email
 
 	return ret, nil
 }
+
+func ConfirmAlumnusRole(ctx context.Context, driver neo4j.DriverWithContext, request_id string, logger *zap.Logger) error {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeWrite,
+	})
+	defer session.Close(ctx)
+
+	query := `
+    MATCH (u:UserProfile)<-[:HAS_REQUEST]-(r:Request {request_id: $request_id})
+    SET u.role = "alumnus"
+    DETACH DELETE r
+  `
+	params := map[string]interface{}{
+		"request_id": request_id,
+	}
+
+	_, err := session.Run(ctx, query, params)
+	if err != nil {
+		logger.Error("Failed to query user", zap.Error(err))
+		return fmt.Errorf("error querying user: %w", err)
+	}
+
+	return nil
+}
+
+func RequestAlumnusRole(ctx context.Context, driver neo4j.DriverWithContext, user_id string, logger *zap.Logger) error {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeWrite,
+	})
+	defer session.Close(ctx)
+
+	request_id := uuid.New().String()
+
+	query := `
+    MATCH (u:UserProfile {user_id: $user_id})
+    MERGE (r:Request)<-[:HAS_REQUEST]-(u)
+    SET
+      r.type = "role_request",
+      r.timestamp = timestamp()
+    ON CREATE SET
+      r.request_id = $request_id
+  `
+	params := map[string]interface{}{
+		"user_id":    user_id,
+		"request_id": request_id,
+	}
+
+	_, err := session.Run(ctx, query, params)
+	if err != nil {
+		logger.Error("Failed to query user", zap.Error(err))
+		return fmt.Errorf("error querying user: %w", err)
+	}
+
+	return nil
+}
+
+func GetAllRequest(ctx context.Context, driver neo4j.DriverWithContext, logger *zap.Logger) ([]map[string]interface{}, error) {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeRead,
+	})
+	defer session.Close(ctx)
+
+	query := `
+    MATCH (u:UserProfile)<-[:HAS_REQUEST]-(r:Request)
+    OPTIONAL MATCH (u)-[r:HAS_WORK_WITH]->(c:Company)
+    OPTIONAL MATCH (u)-->(st:StudentType)<--(fld:Field)<--(d:Department)<--(f:Faculty)
+    RETURN
+    {
+      user: {
+        u.user_id AS user_id,
+        u.username AS username,
+        u.gender AS gender,
+        toString(u.dob) AS dob,
+        u.first_name + " " + u.last_name AS name,
+        u.first_name_eng + " " + u.last_name_eng AS name_eng,
+        u.profile_picture AS profile_picture,
+        u.role AS role,
+        {
+            faculty: f.name,
+            department: d.name,
+            field: fld.name,
+            student_type: st.name,
+            education_level: u.education_level,
+            admit_year: u.admit_year,
+            graduate_year: u.graduate_year,
+            gpax: u.gpax
+        } AS student_info,
+        collect({
+            company: c.name,
+            address: c.address,
+            position: r.position
+        }) AS companies,
+        {
+            email: u.email,
+            github: u.github,
+            linkedin: u.linkdin,
+            facebook: u.facebook,
+            phone: u.phone
+        } AS contact_info
+      },
+      request: {
+        r.request_id AS request_id,
+        r.timestamp AS timestamp
+      }
+    }
+  `
+
+	result, err := session.Run(ctx, query, nil)
+	if err != nil {
+		logger.Error("Failed to query user", zap.Error(err))
+		return nil, fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("error querying user: %w", err))
+	}
+
+	records, err := result.Collect(ctx)
+	if err != nil {
+		logger.Error("Failed to collect query results", zap.Error(err))
+		return nil, fiber.NewError(fiber.StatusInternalServerError, "Error retrieving data")
+	}
+
+	var requests []map[string]interface{}
+
+	for _, record := range records {
+		requests = append(requests, record.AsMap())
+	}
+
+	return requests, nil
+}
