@@ -21,7 +21,7 @@ type ResetPassword struct {
 	ResetJWT string `json:"token,omitempty" mapstructure:"token"`
 }
 
-type ChangeEmail struct {
+type EmailRequest struct {
 	Email string `json:"email,omitempty" mapstructure:"email" validate:"required,email"`
 }
 

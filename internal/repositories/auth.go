@@ -541,3 +541,41 @@ func VerifyEmail(ctx context.Context, driver neo4j.DriverWithContext, user_id, t
 
 	return nil
 }
+
+func CheckExistAlumni(ctx context.Context, driver neo4j.DriverWithContext, email string, logger *zap.Logger) (map[string]interface{}, error) {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeRead,
+	})
+	defer session.Close(ctx)
+
+	query := `
+    MATCH (u:UserProfile {email: $email})
+    RETURN COUNT(u) > 0 AS userExist
+  `
+	params := map[string]interface{}{
+		"email": email,
+	}
+
+	result, err := session.Run(ctx, query, params)
+	if err != nil {
+		logger.Error("Failed to query user", zap.Error(err))
+		return nil, fiber.NewError(fiber.StatusInternalServerError, "Error querying user")
+	}
+
+	record, err := result.Single(ctx)
+	if err != nil {
+		logger.Warn("User not found", zap.String("email", email))
+		return nil, fiber.NewError(fiber.StatusUnauthorized, "User not found")
+	}
+
+	userExists, ok := record.Get("userExists")
+	if !ok {
+		logger.Warn("User not found")
+		return nil, fiber.NewError(fiber.StatusInternalServerError, "Error Using the Query")
+	}
+
+	ret := map[string]interface{}{"isUserExist": userExists.(bool)}
+
+	return ret, nil
+}

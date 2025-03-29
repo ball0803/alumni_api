@@ -22,4 +22,5 @@ func AuthRoutes(group fiber.Router, driver neo4j.DriverWithContext, logger *zap.
 	authWithAuth.Post("/change_password", controllers.ChangePassword(driver, logger))
 	authWithAuth.Get("/request_change_email", controllers.RequestChangeEmail(driver, logger))
 	authWithAuth.Post("/verify-email", controllers.VerifyEmail(driver, logger))
+	authWithAuth.Get("/check_alumni_email", controllers.CheckAlumniExist(driver, logger))
 }

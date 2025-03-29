@@ -169,7 +169,7 @@ func ChangePassword(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 
 func RequestChangeEmail(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		var req models.ChangeEmail
+		var req models.EmailRequest
 
 		if err := validators.Request(c, &req); err != nil {
 			return HandleFail(c, fiber.StatusBadRequest, "Validation failed", logger, err)
@@ -222,6 +222,24 @@ func VerifyEmail(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}
 
-		return c.Redirect("http://localhost:3000/v1", fiber.StatusFound)
+		return c.Redirect("https://alumni.cpe.kmutt.ac.th/homeuser", fiber.StatusFound)
+	}
+}
+
+func CheckAlumniExist(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		var req models.EmailRequest
+
+		if err := validators.Request(c, &req); err != nil {
+			return HandleFail(c, fiber.StatusBadRequest, "Validation failed", logger, err)
+		}
+
+		data, err := repositories.CheckExistAlumni(c.Context(), driver, req.Email, logger)
+		if err != nil {
+			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
+		}
+
+		successMessage := "Request Email Checkup Succesfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, data, logger)
 	}
 }
