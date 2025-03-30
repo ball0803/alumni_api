@@ -25,10 +25,6 @@ type EmailRequest struct {
 	Email string `json:"email,omitempty" mapstructure:"email" validate:"required,email"`
 }
 
-type RequestRequest struct {
-	RequestID string `json:"request_id,omitempty" mapstructure:"request_id" validate:"required,uuid4"`
-}
-
 type LoginResponse struct {
 	UserID    string `json:"user_id,omitempty" mapstructure:"user_id" validate:"required,uuid4"`
 	Password  string `json:"user_password,omitempty" mapstructure:"user_password" validate:"required,min=8"`

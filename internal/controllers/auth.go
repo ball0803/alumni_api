@@ -64,7 +64,7 @@ func Login(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	}
 }
 
-func Registry(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+func RegistryUser(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req models.ReqistryRequest
 
@@ -72,7 +72,25 @@ func Registry(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler 
 			return HandleFail(c, fiber.StatusBadRequest, "Validation failed", logger, err)
 		}
 
-		user, err := repositories.Registry(c.Context(), driver, req, logger)
+		user, err := repositories.RegistryUser(c.Context(), driver, req, logger)
+		if err != nil {
+			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
+		}
+
+		successMessage := "Registry Succesfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, user, logger)
+	}
+}
+
+func RegistryAlumnus(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		var req models.ReqistryRequest
+
+		if err := validators.Request(c, &req); err != nil {
+			return HandleFail(c, fiber.StatusBadRequest, "Validation failed", logger, err)
+		}
+
+		user, err := repositories.RegistryAlumnus(c.Context(), driver, req, logger)
 		if err != nil {
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}
@@ -105,7 +123,7 @@ func VerifyAccount(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Han
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}
 
-		return c.Redirect("http://localhost:3000/v1", fiber.StatusFound)
+		return c.Redirect("https://alumni.cpe.kmutt.ac.th/login", fiber.StatusFound)
 	}
 }
 
@@ -260,7 +278,7 @@ func RequestAlumnusRole(driver neo4j.DriverWithContext, logger *zap.Logger) fibe
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", claim.UserID), logger, nil)
 		}
 
-		err = repositories.RequestAlumnusRole(c.Context(), driver, claim.ID, logger)
+		err = repositories.RequestAlumnusRole(c.Context(), driver, claim.UserID, logger)
 		if err != nil {
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}
@@ -272,17 +290,17 @@ func RequestAlumnusRole(driver neo4j.DriverWithContext, logger *zap.Logger) fibe
 
 func ConfirmAlumnusRole(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		var req models.RequestRequest
+		request_id := c.Params("request_id")
+
+		if err := validators.UUID(request_id); err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
 
 		if err := validators.UserAdmin(c); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		if err := validators.Request(c, &req); err != nil {
-			return HandleFail(c, fiber.StatusBadRequest, "Validation failed", logger, err)
-		}
-
-		err := repositories.ConfirmAlumnusRole(c.Context(), driver, req.RequestID, logger)
+		err := repositories.ConfirmAlumnusRole(c.Context(), driver, request_id, logger)
 		if err != nil {
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}

@@ -49,7 +49,7 @@ func Login(ctx context.Context, driver neo4j.DriverWithContext, username string,
 	return res, nil
 }
 
-func Registry(ctx context.Context, driver neo4j.DriverWithContext, user models.ReqistryRequest, logger *zap.Logger) (map[string]interface{}, error) {
+func RegistryAlumnus(ctx context.Context, driver neo4j.DriverWithContext, user models.ReqistryRequest, logger *zap.Logger) (map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -96,63 +96,124 @@ func Registry(ctx context.Context, driver neo4j.DriverWithContext, user models.R
 	token := auth.GenerateVerificationToken()
 
 	// If the username exists
-	if checkResult.Next(ctx) {
-		record := checkResult.Record()
-		userID, _ := record.Get("user_id")
-		isVerify, _ := record.Get("is_verify")
-		jwtToken, err := auth.GenerateVerificationJWT(userID.(string), token)
-		if err != nil {
-			logger.Error("Failed to create verify jwt", zap.Error(err))
-			return nil, fmt.Errorf("failed to create verify jwt: %w", err)
-		}
+	if !checkResult.Next(ctx) {
+		logger.Error("Alumni User don't exist")
+		return nil, fmt.Errorf("Alumni User don't exist")
+	}
 
-		// If the user is already verified, return an error
-		if isVerify.(bool) {
-			logger.Warn("Username already exists and is verified", zap.String("username", user.Username))
-			return nil, fmt.Errorf("username already exists and is verified")
-		}
+	record := checkResult.Record()
+	userID, _ := record.Get("user_id")
+	isVerify, _ := record.Get("is_verify")
+	jwtToken, err := auth.GenerateVerificationJWT(userID.(string), token)
+	if err != nil {
+		logger.Error("Failed to create verify jwt", zap.Error(err))
+		return nil, fmt.Errorf("failed to create verify jwt: %w", err)
+	}
 
-		// If the user is not verified, allow claiming the account
-		logger.Info("Username exists but is not verified. Allowing claim.", zap.String("username", user.Username))
+	// If the user is already verified, return an error
+	if isVerify.(bool) {
+		logger.Warn("Username already exists and is verified", zap.String("username", user.Username))
+		return nil, fmt.Errorf("username already exists and is verified")
+	}
 
-		// Update the existing user with the new password and verification token
-		updateQuery := `
+	// If the user is not verified, allow claiming the account
+	logger.Info("Username exists but is not verified. Allowing claim.", zap.String("username", user.Username))
+
+	// Update the existing user with the new password and verification token
+	updateQuery := `
             MATCH (u:UserProfile {username: $username})
             SET u.user_password = $password,
                 u.verification_token = $token
         `
-		updateParams := map[string]interface{}{
-			"username": user.Username,
-			"password": hashedPass,
-			"token":    token,
-		}
+	updateParams := map[string]interface{}{
+		"username": user.Username,
+		"password": hashedPass,
+		"token":    token,
+	}
 
-		_, err = tx.Run(ctx, updateQuery, updateParams)
+	_, err = tx.Run(ctx, updateQuery, updateParams)
+	if err != nil {
+		logger.Error("Failed to update user", zap.Error(err))
+		return nil, fmt.Errorf("error updating user: %w", err)
+	}
+
+	// Send verification email
+	if err = utils.SendVerificationEmail(user.Username, jwtToken); err != nil {
+		logger.Error("Failed to send verification email", zap.Error(err))
+		// Rollback the transaction if email sending fails
+		if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+			logger.Error("Failed to rollback transaction", zap.Error(rollbackErr))
+		}
+		return nil, fmt.Errorf("error sending verification email: %w", err)
+	}
+
+	// Commit the transaction after sending the email
+	if err = tx.Commit(ctx); err != nil {
+		logger.Error("Failed to commit transaction", zap.Error(err))
+		return nil, fmt.Errorf("error committing transaction: %w", err)
+	}
+
+	ret := map[string]interface{}{
+		"user_id": userID,
+	}
+	return ret, nil
+}
+
+func RegistryUser(ctx context.Context, driver neo4j.DriverWithContext, user models.ReqistryRequest, logger *zap.Logger) (map[string]interface{}, error) {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeWrite,
+	})
+	defer session.Close(ctx)
+
+	// Start a transaction
+	tx, err := session.BeginTransaction(ctx)
+	if err != nil {
+		logger.Error("Failed to start transaction", zap.Error(err))
+		return nil, fmt.Errorf("error starting transaction: %w", err)
+	}
+
+	// Defer a function to handle transaction rollback in case of failure
+	defer func() {
 		if err != nil {
-			logger.Error("Failed to update user", zap.Error(err))
-			return nil, fmt.Errorf("error updating user: %w", err)
-		}
-
-		// Send verification email
-		if err = utils.SendVerificationEmail(user.Username, jwtToken); err != nil {
-			logger.Error("Failed to send verification email", zap.Error(err))
-			// Rollback the transaction if email sending fails
+			logger.Info("Rolling back transaction due to error", zap.Error(err))
 			if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
 				logger.Error("Failed to rollback transaction", zap.Error(rollbackErr))
 			}
-			return nil, fmt.Errorf("error sending verification email: %w", err)
 		}
+	}()
 
-		// Commit the transaction after sending the email
-		if err = tx.Commit(ctx); err != nil {
-			logger.Error("Failed to commit transaction", zap.Error(err))
-			return nil, fmt.Errorf("error committing transaction: %w", err)
-		}
+	// Check if the username already exists
+	checkQuery := `
+        MATCH (u:UserProfile {username: $username})
+        RETURN u.user_id AS user_id, u.is_verify AS is_verify, u.verification_token AS verification_token
+    `
+	checkParams := map[string]interface{}{"username": user.Username}
+	checkResult, err := tx.Run(ctx, checkQuery, checkParams)
+	if err != nil {
+		logger.Error("Failed to check username uniqueness", zap.Error(err))
+		return nil, fmt.Errorf("error checking username uniqueness: %w", err)
+	}
 
-		ret := map[string]interface{}{
-			"user_id": userID,
+	// Hash the password
+	hashedPass, err := auth.HashPassword(user.Password)
+	if err != nil {
+		logger.Error("Failed to hash password", zap.Error(err))
+		return nil, fmt.Errorf("error hashing password: %w", err)
+	}
+
+	// Generate a verification token
+	token := auth.GenerateVerificationToken()
+
+	if checkResult.Next(ctx) {
+		record := checkResult.Record()
+		isVerify, _ := record.Get("is_verify")
+
+		// If the user is already verified, return an error
+		if isVerify.(bool) {
+			logger.Warn("Username already exists and is verified", zap.String("username", user.Username))
+			return nil, fmt.Errorf(")username already exists and is verified")
 		}
-		return ret, nil
 	}
 
 	// If the username does not exist, create a new user
@@ -180,7 +241,7 @@ func Registry(ctx context.Context, driver neo4j.DriverWithContext, user models.R
 		"username": user.Username,
 		"password": hashedPass,
 		"token":    token,
-		"role":     "alumnus",
+		"role":     "user",
 	}
 
 	createResult, err := tx.Run(ctx, createQuery, createParams)
@@ -588,7 +649,7 @@ func ConfirmAlumnusRole(ctx context.Context, driver neo4j.DriverWithContext, req
 	defer session.Close(ctx)
 
 	query := `
-    MATCH (u:UserProfile)<-[:HAS_REQUEST]-(r:Request {request_id: $request_id})
+    MATCH (u:UserProfile)-[:HAS_REQUEST]->(r:Request {request_id: $request_id})
     SET u.role = "alumnus"
     DETACH DELETE r
   `
@@ -616,10 +677,10 @@ func RequestAlumnusRole(ctx context.Context, driver neo4j.DriverWithContext, use
 
 	query := `
     MATCH (u:UserProfile {user_id: $user_id})
-    MERGE (r:Request)<-[:HAS_REQUEST]-(u)
-    SET
-      r.type = "role_request",
-      r.timestamp = timestamp()
+    MERGE (r:Request {
+      type: "role_request",
+      timestamp: timestamp()
+    })<-[:HAS_REQUEST]-(u)
     ON CREATE SET
       r.request_id = $request_id
   `
@@ -645,54 +706,62 @@ func GetAllRequest(ctx context.Context, driver neo4j.DriverWithContext, logger *
 	defer session.Close(ctx)
 
 	query := `
-    MATCH (u:UserProfile)<-[:HAS_REQUEST]-(r:Request)
-    OPTIONAL MATCH (u)-[r:HAS_WORK_WITH]->(c:Company)
-    OPTIONAL MATCH (u)-->(st:StudentType)<--(fld:Field)<--(d:Department)<--(f:Faculty)
-    RETURN
-    {
+    MATCH (user:UserProfile)-[:HAS_REQUEST]->(request:Request)
+    OPTIONAL MATCH (user)-[workRel:HAS_WORK_WITH]->(company:Company)
+    OPTIONAL MATCH (user)-->(studentType:StudentType)<--(field:Field)<--(department:Department)<--(faculty:Faculty)
+
+    // First collect all companies for each user
+    WITH user, request, faculty, department, field, studentType,
+        collect(
+          CASE WHEN company IS NOT NULL THEN {
+            company: company.name,
+            address: company.address,
+            position: workRel.position
+          } ELSE null END
+        ) AS companies
+
+    // Then build the final result structure
+    RETURN {
       user: {
-        u.user_id AS user_id,
-        u.username AS username,
-        u.gender AS gender,
-        toString(u.dob) AS dob,
-        u.first_name + " " + u.last_name AS name,
-        u.first_name_eng + " " + u.last_name_eng AS name_eng,
-        u.profile_picture AS profile_picture,
-        u.role AS role,
-        {
-            faculty: f.name,
-            department: d.name,
-            field: fld.name,
-            student_type: st.name,
-            education_level: u.education_level,
-            admit_year: u.admit_year,
-            graduate_year: u.graduate_year,
-            gpax: u.gpax
-        } AS student_info,
-        collect({
-            company: c.name,
-            address: c.address,
-            position: r.position
-        }) AS companies,
-        {
-            email: u.email,
-            github: u.github,
-            linkedin: u.linkdin,
-            facebook: u.facebook,
-            phone: u.phone
-        } AS contact_info
+        user_id: user.user_id,
+        username: user.username,
+        gender: user.gender,
+        dob: toString(user.dob),
+        name: user.first_name + " " + user.last_name,
+        name_eng: user.first_name_eng + " " + user.last_name_eng,
+        profile_picture: user.profile_picture,
+        role: user.role,
+        student_info: {
+          faculty: faculty.name,
+          department: department.name,
+          field: field.name,
+          student_type: studentType.name,
+          education_level: user.education_level,
+          admit_year: user.admit_year,
+          graduate_year: user.graduate_year,
+          gpax: user.gpax
+        },
+        companies: companies,
+        contact_info: {
+          email: user.email,
+          github: user.github,
+          linkedin: user.linkdin,
+          facebook: user.facebook,
+          phone: user.phone
+        }
       },
       request: {
-        r.request_id AS request_id,
-        r.timestamp AS timestamp
+        type: request.type,
+        request_id: request.request_id,
+        timestamp: request.timestamp
       }
-    }
+    } AS result
   `
 
 	result, err := session.Run(ctx, query, nil)
 	if err != nil {
 		logger.Error("Failed to query user", zap.Error(err))
-		return nil, fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("error querying user: %w", err))
+		return nil, fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("error querying user: %s", err))
 	}
 
 	records, err := result.Collect(ctx)
@@ -704,7 +773,9 @@ func GetAllRequest(ctx context.Context, driver neo4j.DriverWithContext, logger *
 	var requests []map[string]interface{}
 
 	for _, record := range records {
-		requests = append(requests, record.AsMap())
+		request, _ := record.Get("result")
+		utils.CleanNullValues(request)
+		requests = append(requests, request.(map[string]interface{}))
 	}
 
 	return requests, nil

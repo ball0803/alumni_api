@@ -16,7 +16,7 @@ type UserProfile struct {
 	Gender         string      `json:"gender,omitempty" mapstructure:"gender" validate:"oneof=male female other"`
 	DOB            time.Time   `json:"DOB,omitempty" mapstructure:"DOB" validate:"required"`
 	ProfilePicture string      `json:"profile_picture,omitempty" mapstructure:"profile_picture" validate:"omitempty,url"`
-	Role           string      `json:"role,omitempty" mapstructure:"role" validate:"required,oneof=student alumnus staff"`
+	Role           string      `json:"role,omitempty" mapstructure:"role" validate:"required,oneof=user alumnus admin"`
 	StudentInfo    StudentInfo `json:"student_info,omitempty" mapstructure:"student_info,squash" validate:"required"`
 	Companies      []Company   `json:"companies,omitempty" mapstructure:"companies" validate:"omitempty,dive"`
 	ContactInfo    Contact     `json:"contact_info,omitempty" mapstructure:"contact_info,squash" validate:"omitempty"`

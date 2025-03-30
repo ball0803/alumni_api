@@ -71,7 +71,7 @@ const ResetPasswordMail = `
               <p>Hi [name],</p>
               <p>You recently requested to reset the password for your [CPE Alumni] account. Click the button below to proceed.</p>
               
-              <a href="http://localhost:3000?token=%s" class="button">Reset Password</a>
+              <a href="https://alumni.cpe.kmutt.ac.th/reset_password?token=%s" class="button">Reset Password</a>
               
               <p class="help-text">If you did not request a password reset, please ignore this email or reply to let us know. This password reset link is only valid for the next 30 minutes.</p>
               
@@ -167,7 +167,7 @@ const VerifyMail = `
                 <h2 style="color: #1e88e5; text-align: center;">Verify Your Email Address</h2>
                 <p>Hello,</p>
                 <p>Thank you for signing up. Use the verification click verify button below to complete your registration:</p>
-                <a href="http://localhost:3000/v1/auth/verify-account?token=%s" class="button">Verify Email</a>
+                <a href="https://alumni.cpe.kmutt.ac.th/v1/auth/verify-account?token=%s" class="button">Verify Email</a>
                 <p class="help-text">If you didn't register CPE Alumni account, you can safely ignore this email.</p>
             </div>
             <div class="footer">

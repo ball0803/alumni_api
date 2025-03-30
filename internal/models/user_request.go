@@ -39,7 +39,7 @@ type CreateProfileRequest struct {
 	ProfilePicture string                 `json:"profile_picture,omitempty" mapstructure:"profile_picture" validate:"omitempty,url"`
 	ContactInfo    Contact                `json:"contact_info,omitempty" mapstructure:"contact_info,squash" validate:"omitempty"`
 	StudentInfo    StudentInfo            `json:"student_info,omitempty" mapstructure:"student_info,squash" validate:"omitempty"`
-	Role           string                 `json:"role,omitempty" mapstructure:"role" validate:"required,oneof=student alumnus admin"`
+	Role           string                 `json:"role,omitempty" mapstructure:"role" validate:"required,oneof=user alumnus admin"`
 }
 
 type UserFriendRequest struct {
