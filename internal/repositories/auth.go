@@ -20,7 +20,8 @@ func Login(ctx context.Context, driver neo4j.DriverWithContext, username string,
 	defer session.Close(ctx)
 
 	query := `
-    MATCH (u:UserProfile {username: $username})
+    MATCH (u:UserProfile)
+    WHERE u.username = $username OR u.email = $username
     RETURN u.user_id AS user_id, u.user_password AS user_password, u.role AS role,
       u.admit_year AS admit_year
   `
@@ -75,10 +76,17 @@ func RegistryAlumnus(ctx context.Context, driver neo4j.DriverWithContext, user m
 
 	// Check if the username already exists
 	checkQuery := `
-        MATCH (u:UserProfile {username: $username})
-        RETURN u.user_id AS user_id, u.is_verify AS is_verify, u.verification_token AS verification_token
-    `
-	checkParams := map[string]interface{}{"username": user.Username}
+    OPTIONAL MATCH (u1:UserProfile {username: $username, is_verify: true})
+    OPTIONAL MATCH (u2:UserProfile {email: $email, is_verify: true})
+    RETURN 
+      u1 IS NOT NULL AS usernameExist,
+      u2 IS NOT NULL AS emailExist,
+      u2.user_id AS user_id
+  `
+	checkParams := map[string]interface{}{
+		"username": user.Username,
+		"email":    user.Email,
+	}
 	checkResult, err := tx.Run(ctx, checkQuery, checkParams)
 	if err != nil {
 		logger.Error("Failed to check username uniqueness", zap.Error(err))
@@ -95,40 +103,47 @@ func RegistryAlumnus(ctx context.Context, driver neo4j.DriverWithContext, user m
 	// Generate a verification token
 	token := auth.GenerateVerificationToken()
 
-	// If the username exists
-	if !checkResult.Next(ctx) {
-		logger.Error("Alumni User don't exist")
-		return nil, fmt.Errorf("Alumni User don't exist")
+	record, err := checkResult.Single(ctx)
+	if err != nil {
+		logger.Error("Failed to collect query results", zap.Error(err))
+		return nil, fiber.NewError(fiber.StatusInternalServerError, "Error retrieving data")
 	}
 
-	record := checkResult.Record()
+	usernameExist, _ := record.Get("usernameExist")
+	if usernameExist.(bool) {
+		logger.Error("User already used", zap.Error(err))
+		return nil, fiber.NewError(fiber.StatusInternalServerError, "User already exist")
+	}
+
+	emailExist, _ := record.Get("emailExist")
+	if !emailExist.(bool) {
+		logger.Error("This email not exist in database", zap.Error(err))
+		return nil, fiber.NewError(fiber.StatusInternalServerError, "This email not exist in database")
+	}
+
 	userID, _ := record.Get("user_id")
-	isVerify, _ := record.Get("is_verify")
 	jwtToken, err := auth.GenerateVerificationJWT(userID.(string), token)
 	if err != nil {
 		logger.Error("Failed to create verify jwt", zap.Error(err))
 		return nil, fmt.Errorf("failed to create verify jwt: %w", err)
 	}
 
-	// If the user is already verified, return an error
-	if isVerify.(bool) {
-		logger.Warn("Username already exists and is verified", zap.String("username", user.Username))
-		return nil, fmt.Errorf("username already exists and is verified")
-	}
-
-	// If the user is not verified, allow claiming the account
-	logger.Info("Username exists but is not verified. Allowing claim.", zap.String("username", user.Username))
-
 	// Update the existing user with the new password and verification token
 	updateQuery := `
-            MATCH (u:UserProfile {username: $username})
-            SET u.user_password = $password,
-                u.verification_token = $token
-        `
+  MATCH (u:UserProfile {user_id: $user_id})
+  SET
+    u.username = $username,
+    u.user_password = $password,
+    u.verification_token = $token,
+    u.role = $role
+  `
+
 	updateParams := map[string]interface{}{
+		"user_id":  userID,
 		"username": user.Username,
 		"password": hashedPass,
 		"token":    token,
+		"role":     "alumnus",
 	}
 
 	_, err = tx.Run(ctx, updateQuery, updateParams)
@@ -138,7 +153,7 @@ func RegistryAlumnus(ctx context.Context, driver neo4j.DriverWithContext, user m
 	}
 
 	// Send verification email
-	if err = utils.SendVerificationEmail(user.Username, jwtToken); err != nil {
+	if err = utils.SendVerificationEmail(user.Email, jwtToken); err != nil {
 		logger.Error("Failed to send verification email", zap.Error(err))
 		// Rollback the transaction if email sending fails
 		if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
@@ -185,10 +200,16 @@ func RegistryUser(ctx context.Context, driver neo4j.DriverWithContext, user mode
 
 	// Check if the username already exists
 	checkQuery := `
-        MATCH (u:UserProfile {username: $username})
-        RETURN u.user_id AS user_id, u.is_verify AS is_verify, u.verification_token AS verification_token
-    `
-	checkParams := map[string]interface{}{"username": user.Username}
+    OPTIONAL MATCH (u1:UserProfile {username: $username, is_verify: true})
+    OPTIONAL MATCH (u2:UserProfile {email: $email, is_verify: true})
+    RETURN 
+      u1 IS NOT NULL AS usernameExist,
+      u2 IS NOT NULL AS emailExist
+  `
+	checkParams := map[string]interface{}{
+		"username": user.Username,
+		"email":    user.Email,
+	}
 	checkResult, err := tx.Run(ctx, checkQuery, checkParams)
 	if err != nil {
 		logger.Error("Failed to check username uniqueness", zap.Error(err))
@@ -205,18 +226,24 @@ func RegistryUser(ctx context.Context, driver neo4j.DriverWithContext, user mode
 	// Generate a verification token
 	token := auth.GenerateVerificationToken()
 
-	if checkResult.Next(ctx) {
-		record := checkResult.Record()
-		isVerify, _ := record.Get("is_verify")
-
-		// If the user is already verified, return an error
-		if isVerify.(bool) {
-			logger.Warn("Username already exists and is verified", zap.String("username", user.Username))
-			return nil, fmt.Errorf(")username already exists and is verified")
-		}
+	record, err := checkResult.Single(ctx)
+	if err != nil {
+		logger.Error("Failed to collect query results", zap.Error(err))
+		return nil, fiber.NewError(fiber.StatusInternalServerError, "Error retrieving data")
 	}
 
-	// If the username does not exist, create a new user
+	usernameExist, _ := record.Get("usernameExist")
+	if usernameExist.(bool) {
+		logger.Error("User already exist", zap.Error(err))
+		return nil, fiber.NewError(fiber.StatusInternalServerError, "User already exist")
+	}
+
+	emailExist, _ := record.Get("emailExist")
+	if emailExist.(bool) {
+		logger.Error("Email already used", zap.Error(err))
+		return nil, fiber.NewError(fiber.StatusInternalServerError, "Email already used")
+	}
+
 	userID := uuid.New().String()
 
 	jwtToken, err := auth.GenerateVerificationJWT(userID, token)
@@ -226,22 +253,28 @@ func RegistryUser(ctx context.Context, driver neo4j.DriverWithContext, user mode
 	}
 
 	createQuery := `
-        CREATE (u:UserProfile {
-            user_id: $userID,
-            username: $username,
-            user_password: $password,
-            is_verify: false,
-            verification_token: $token,
-            role: $role
-        })
-        RETURN u.user_id AS user_id
-    `
+    CREATE (u:UserProfile {
+        user_id: $userID,
+        username: $username,
+        user_password: $password,
+        email: $email,
+        is_verify: false,
+        verification_token: $token,
+        role: $role
+    })
+    RETURN u.user_id AS user_id
+  `
 	createParams := map[string]interface{}{
 		"userID":   userID,
 		"username": user.Username,
+		"email":    user.Email,
 		"password": hashedPass,
 		"token":    token,
 		"role":     "user",
+	}
+
+	if user.Username == "" {
+		createParams["username"] = user.Email
 	}
 
 	createResult, err := tx.Run(ctx, createQuery, createParams)
@@ -265,7 +298,7 @@ func RegistryUser(ctx context.Context, driver neo4j.DriverWithContext, user mode
 	}
 
 	// Send verification email
-	if err = utils.SendVerificationEmail(user.Username, jwtToken); err != nil {
+	if err = utils.SendVerificationEmail(user.Email, jwtToken); err != nil {
 		logger.Error("Failed to send verification email", zap.Error(err))
 		// Rollback the transaction if email sending fails
 		if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
@@ -378,7 +411,7 @@ func RequestChangePassword(ctx context.Context, driver neo4j.DriverWithContext, 
             user_id: $userID
         })
         SET u.reset_password_token = $token
-        RETURN u.username AS username
+        RETURN u.email AS email
     `
 	params := map[string]interface{}{
 		"userID": user_id,
@@ -396,14 +429,14 @@ func RequestChangePassword(ctx context.Context, driver neo4j.DriverWithContext, 
 		logger.Warn("User not found", zap.String("user_id", user_id))
 		return fmt.Errorf("user not found: %w", err)
 	}
-	username, ok := record.Get("username")
+	email, ok := record.Get("email")
 	if !ok {
-		logger.Warn("Username not found", zap.String("user_id", user_id))
-		return fmt.Errorf("Username not found: %w", err)
+		logger.Warn("Email not found", zap.String("user_id", user_id))
+		return fmt.Errorf("Email not found: %w", err)
 	}
 
 	// Send verification email
-	if err = utils.SendResetMail(username.(string), jwtToken); err != nil {
+	if err = utils.SendResetMail(email.(string), jwtToken); err != nil {
 		logger.Error("Failed to send verification email", zap.Error(err))
 		// Rollback the transaction if email sending fails
 		if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
@@ -612,6 +645,7 @@ func CheckExistAlumni(ctx context.Context, driver neo4j.DriverWithContext, email
 
 	query := `
     MATCH (u:UserProfile {email: $email})
+    WHERE u.is_verify = false OR u.is_verify IS NULL
     RETURN COUNT(u) > 0 AS userExist
   `
 	params := map[string]interface{}{
@@ -626,11 +660,11 @@ func CheckExistAlumni(ctx context.Context, driver neo4j.DriverWithContext, email
 
 	record, err := result.Single(ctx)
 	if err != nil {
-		logger.Warn("User not found", zap.String("email", email))
+		logger.Warn("User not found", zap.Error(err))
 		return nil, fiber.NewError(fiber.StatusUnauthorized, "User not found")
 	}
 
-	userExists, ok := record.Get("userExists")
+	userExists, ok := record.Get("userExist")
 	if !ok {
 		logger.Warn("User not found")
 		return nil, fiber.NewError(fiber.StatusInternalServerError, "Error Using the Query")
