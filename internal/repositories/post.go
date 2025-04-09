@@ -4,13 +4,13 @@ import (
 	"alumni_api/internal/models"
 	"alumni_api/internal/utils"
 	"context"
-	"net/http"
-	"time"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"go.uber.org/zap"
+	"net/http"
+	"slices"
+	"time"
 )
 
 func GetAllPosts(ctx context.Context, driver neo4j.DriverWithContext, logger *zap.Logger) ([]map[string]interface{}, error) {
@@ -30,6 +30,8 @@ func GetAllPosts(ctx context.Context, driver neo4j.DriverWithContext, logger *za
       p.title AS title,
       p.post_type AS post_type,
       p.media_urls AS media_urls,
+      p.start_date AS start_date,
+      p.end_date AS end_date,
       author.first_name + " " + author.last_name AS name,
       author.user_id AS user_id,
       author.profile_picture AS profile_picture,
@@ -90,6 +92,8 @@ func GetPostByID(ctx context.Context, driver neo4j.DriverWithContext, postID str
       p.content AS content,
       p.post_type AS post_type,
       p.media_urls AS media_urls,
+      p.start_date AS start_date,
+      p.end_date AS end_date,
       p.created_timestamp AS created_timestamp,
       author.first_name + " " + author.last_name AS author_name,
       author.user_id AS author_user_id,
@@ -199,13 +203,23 @@ func CreatePost(ctx context.Context, driver neo4j.DriverWithContext, userID stri
       created_timestamp: timestamp()
     `
 
-	var params = map[string]interface{}{
+	params := map[string]interface{}{
 		"user_id":    userID,
 		"post_id":    postID,
 		"title":      post.Title,
 		"content":    post.Content,
 		"post_type":  post.PostType,
 		"visibility": post.Visibility,
+	}
+
+	if slices.Contains(models.AllowRangeType, post.PostType) {
+		query += `,
+      start_date: $start_date,
+      end_date: $end_date
+    `
+
+		params["start_date"] = post.StartDate
+		params["end_date"] = post.EndDate
 	}
 
 	if len(post.MediaURL) > 0 {
@@ -246,6 +260,12 @@ func UpdatePostByID(ctx context.Context, driver neo4j.DriverWithContext, postID 
 
 	properties["updated_timestamp"] = time.Now().Unix()
 	// Directly run the update query
+
+	if !slices.Contains(models.AllowRangeType, updatedData.PostType) {
+		delete(properties, "start_date")
+		delete(properties, "end_date")
+	}
+
 	query := `
 		MATCH (p:Post {post_id: $post_id})
 		SET p += $properties
