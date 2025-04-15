@@ -15,6 +15,8 @@ type UserFulltextSearch struct {
 }
 
 type UpdateUserProfileRequest struct {
+	StudentID      string      `json:"student_id,omitempty" mapstructure:"student_id,omitempty" validate:"omitempty"`
+	Generation     string      `json:"generation,omitempty" mapstructure:"generation,omitempty" validate:"omitempty"`
 	FirstName      string      `json:"first_name,omitempty" mapstructure:"first_name,omitempty" validate:"omitempty,min=2,max=50"`
 	LastName       string      `json:"last_name,omitempty" mapstructure:"last_name,omitempty" validate:"omitempty,min=2,max=50"`
 	FirstNameEng   string      `json:"first_name_eng,omitempty" mapstructure:"first_name_eng,omitempty" validate:"omitempty,min=2,max=50"`
@@ -24,12 +26,11 @@ type UpdateUserProfileRequest struct {
 	ProfilePicture string      `json:"profile_picture,omitempty" mapstructure:"profile_picture,omitempty" validate:"omitempty,url"`
 	ContactInfo    Contact     `json:"contact_info,omitempty" mapstructure:"contact_info,squash" validate:"omitempty"`
 	StudentInfo    StudentInfo `json:"student_info,omitempty" mapstructure:"student_info,squash" validate:"omitempty"`
+	Role           string      `json:"role,omitempty" mapstructure:"role" validate:"omitempty,oneof=user alumnus admin"`
 }
 
 type CreateProfileRequest struct {
 	UserID         string                 `json:"user_id,omitempty" mapstructure:"user_id" validate:"omitempty,uuid4"`
-	StudentID      string                 `json:"student_id,omitempty" mapstructure:"student_id,omitempty" validate:"omitempty"`
-	Generation     string                 `json:"generation,omitempty" mapstructure:"generation,omitempty" validate:"omitempty"`
 	FirstName      string                 `json:"first_name,omitempty" mapstructure:"first_name" validate:"omitempty,customname,min=2,max=50"`
 	LastName       string                 `json:"last_name,omitempty" mapstructure:"last_name" validate:"omitempty,min=2,max=50"`
 	FirstNameEng   string                 `json:"first_name_eng,omitempty" mapstructure:"first_name_eng" validate:"omitempty,customname,min=2,max=50"`
@@ -47,7 +48,7 @@ type UserFriendRequest struct {
 }
 
 type UserRequestFilter struct {
-	StudentType string `json:"studentType,omitempty" mapstructure:"studentType" validate:"omitempty"`
+	StudentType string `json:"student_type,omitempty" mapstructure:"student_type" validate:"omitempty"`
 	Field       string `json:"field,omitempty" mapstructure:"field" validate:"omitempty"`
 }
 

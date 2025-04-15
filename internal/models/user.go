@@ -18,18 +18,17 @@ type UserProfile struct {
 	ProfilePicture string      `json:"profile_picture,omitempty" mapstructure:"profile_picture" validate:"omitempty,url"`
 	Role           string      `json:"role,omitempty" mapstructure:"role" validate:"required,oneof=user alumnus admin"`
 	StudentInfo    StudentInfo `json:"student_info,omitempty" mapstructure:"student_info,squash" validate:"required"`
+	CollegeInfo    CollegeInfo `json:"college_info,omitempty" mapstructure:"college_info,squash" validate:"omitempty"`
 	Companies      []Company   `json:"companies,omitempty" mapstructure:"companies" validate:"omitempty,dive"`
 	ContactInfo    Contact     `json:"contact_info,omitempty" mapstructure:"contact_info,squash" validate:"omitempty"`
 }
 
 type StudentInfo struct {
-	CollegeInfo    CollegeInfo                    `json:"college_info,omitempty" mapstructure:"college_info,squash" validate:"omitempty"`
-	EducationLevel string                         `json:"education_level,omitempty" mapstructure:"education_level,omitempty" validate:"omitempty"`
-	StudentID      string                         `json:"student_id,omitempty" mapstructure:"student_id,omitempty" validate:"omitempty"`
-	Generation     string                         `json:"generation,omitempty" mapstructure:"generation,omitempty" validate:"omitempty"`
-	AdmitYear      customtypes.Encrypted[int16]   `json:"admit_year,omitempty" mapstructure:"admit_year,omitempty" validate:"omitempty,gte=2510,lte=2600"`
-	GraduateYear   customtypes.Encrypted[int16]   `json:"graduate_year,omitempty" mapstructure:"graduate_year,omitempty" validate:"omitempty,gte=2530"`
-	GPAX           customtypes.Encrypted[float32] `json:"gpax,omitempty" mapstructure:"gpax,omitempty" validate:"omitempty,gte=0.0,lte=4.0"`
+	StudentID    string                         `json:"student_id,omitempty" mapstructure:"student_id,omitempty" validate:"omitempty"`
+	Generation   string                         `json:"generation,omitempty" mapstructure:"generation,omitempty" validate:"omitempty"`
+	AdmitYear    customtypes.Encrypted[int16]   `json:"admit_year,omitempty" mapstructure:"admit_year,omitempty" validate:"omitempty,gte=2510,lte=2600"`
+	GraduateYear customtypes.Encrypted[int16]   `json:"graduate_year,omitempty" mapstructure:"graduate_year,omitempty" validate:"omitempty,gte=2530"`
+	GPAX         customtypes.Encrypted[float32] `json:"gpax,omitempty" mapstructure:"gpax,omitempty" validate:"omitempty,gte=0.0,lte=4.0"`
 }
 
 type CollegeInfo struct {
@@ -40,7 +39,7 @@ type CollegeInfo struct {
 }
 
 type Company struct {
-	Company   string                         `json:"company,omitempty" mapstructure:"company,omitempty" validate:"omitempty,min=2,max=100"`
+	Company   string                         `json:"company,omitempty" mapstructure:"company,omitempty" validate:"required,min=2,max=100"`
 	Address   string                         `json:"address,omitempty" mapstructure:"address,omitempty" validate:"omitempty,max=200"`
 	Position  customtypes.Encrypted[string]  `json:"position,omitempty" mapstructure:"position,omitempty" validate:"omitempty,max=100"`
 	SalaryMin customtypes.Encrypted[float32] `json:"salary_min,omitempty" mapstructure:"salary_min,omitempty" validate:"omitempty"`

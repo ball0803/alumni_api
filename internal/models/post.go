@@ -11,7 +11,7 @@ var AllowRangeType = []string{
 type Post struct {
 	Title      string    `json:"title,omitempty" mapstructure:"title" validate:"required,min=3,max=100"`
 	Content    string    `json:"content,omitempty" mapstructure:"content" validate:"required,min=10,max=500"`
-	PostType   string    `json:"post_type,omitempty" mapstructure:"post_type" validate:"required,oneof=event story job mentorship showcase donation_campaign announcement discussion survey"`
+	PostType   string    `json:"post_type,omitempty" mapstructure:"post_type" validate:"required,oneof=event story job mentorship showcase announcement discussion survey"`
 	StartDate  time.Time `json:"start_date,omitempty" mapstructure:"start_date" validate:"omitempty"`
 	EndDate    time.Time `json:"end_date,omitempty" mapstructure:"end_date" validate:"omitempty"`
 	MediaURL   []string  `json:"media_url,omitempty" mapstructure:"media_url" validate:"omitempty,dive,url"`

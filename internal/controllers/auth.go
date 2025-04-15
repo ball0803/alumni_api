@@ -35,7 +35,6 @@ func Login(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 		}
 
 		ok, err := services.UserVerify(c.Context(), driver, user.UserID, logger)
-		fmt.Println(ok)
 		if err != nil {
 			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, err)
 		}
@@ -52,6 +51,15 @@ func Login(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 		if err != nil {
 			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
 		}
+
+		c.Cookie(&fiber.Cookie{
+			Name:     "jwt",
+			Value:    token,
+			HTTPOnly: true,
+			Secure:   true, // Enable in production (HTTPS only)
+			SameSite: "Strict",
+			MaxAge:   1 * 24 * 60 * 60 * 1000, // 1 day
+		})
 
 		ret := map[string]interface{}{
 			"token":     token,
