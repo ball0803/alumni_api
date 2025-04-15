@@ -2,6 +2,7 @@ package utils
 
 import (
 	"alumni_api/config"
+	"alumni_api/internal/utils/mail_format"
 	"fmt"
 
 	"github.com/sendgrid/sendgrid-go"
@@ -10,7 +11,7 @@ import (
 )
 
 func sendEmail(toEmail, subject, body string) error {
-	from := mail.NewEmail("CPE Alumni", "phurin.reongsang@gmail.com") // Your verified sender email
+	from := mail.NewEmail("CPE Alumni", "phurin.reongsang@gmail.com")
 	to := mail.NewEmail("", toEmail)
 	message := mail.NewSingleEmail(from, subject, to, body, body)
 	client := sendgrid.NewSendClient(config.GetEnv("SENDGUN_API_KEY", ""))
@@ -19,9 +20,27 @@ func sendEmail(toEmail, subject, body string) error {
 	return err
 }
 
+func SendOneTimeRegistryEmailSucc(email, token, ref string) error {
+	subject := "Alumni One Time Registration"
+	body := fmt.Sprintf(mail_format.OneTimeRegistrySucc, token, ref)
+	if err := sendEmail(email, subject, body); err != nil {
+		return err
+	}
+	return nil
+}
+
+func SendOneTimeRegistryEmailFail(email, ref string) error {
+	subject := "Alumni One Time Registration"
+	body := fmt.Sprintf(mail_format.OneTimeRegistryFail, ref)
+	if err := sendEmail(email, subject, body); err != nil {
+		return err
+	}
+	return nil
+}
+
 func SendVerificationEmail(email, token string) error {
 	subject := "Alumni Verification"
-	body := fmt.Sprintf(VerifyMail, token)
+	body := fmt.Sprintf(mail_format.VerifyMail, token)
 	if err := sendEmail(email, subject, body); err != nil {
 		return err
 	}
@@ -30,7 +49,7 @@ func SendVerificationEmail(email, token string) error {
 
 func SendVerificationChangeEmail(email, token string) error {
 	subject := "Alumni Verification"
-	body := fmt.Sprintf(VerifyChangeMail, token)
+	body := fmt.Sprintf(mail_format.VerifyChangeMail, token)
 	if err := sendEmail(email, subject, body); err != nil {
 		return err
 	}
@@ -39,7 +58,7 @@ func SendVerificationChangeEmail(email, token string) error {
 
 func SendResetMail(email, token string) error {
 	subject := "Alumni Password Reset"
-	body := fmt.Sprintf(ResetPasswordMail, token)
+	body := fmt.Sprintf(mail_format.ResetPasswordMail, token)
 	if err := sendEmail(email, subject, body); err != nil {
 		return err
 	}

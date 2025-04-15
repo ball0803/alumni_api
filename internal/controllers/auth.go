@@ -74,7 +74,7 @@ func Login(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 
 func RegistryUser(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		var req models.ReqistryRequest
+		var req models.RegistryRequest
 
 		if err := validators.Request(c, &req); err != nil {
 			return HandleFail(c, fiber.StatusBadRequest, "Validation failed", logger, err)
@@ -92,19 +92,24 @@ func RegistryUser(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Hand
 
 func RegistryAlumnus(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		var req models.ReqistryRequest
+		var req models.RegistryOneTimeRequest
 
 		if err := validators.Request(c, &req); err != nil {
 			return HandleFail(c, fiber.StatusBadRequest, "Validation failed", logger, err)
 		}
 
-		user, err := repositories.RegistryAlumnus(c.Context(), driver, req, logger)
+		claim, err := auth.ParseOTRJWT(req.Token)
+		if err != nil {
+			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
+		}
+
+		err = repositories.RegistryAlumnus(c.Context(), driver, req, claim.Email, logger)
 		if err != nil {
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}
 
 		successMessage := "Registry Succesfully"
-		return HandleSuccess(c, fiber.StatusOK, successMessage, user, logger)
+		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
 	}
 }
 
@@ -252,7 +257,7 @@ func VerifyEmail(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 	}
 }
 
-func CheckAlumniExist(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+func RequestAlumniOneTimeRegistry(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req models.EmailRequest
 
@@ -260,12 +265,12 @@ func CheckAlumniExist(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.
 			return HandleFail(c, fiber.StatusBadRequest, "Validation failed", logger, err)
 		}
 
-		data, err := repositories.CheckExistAlumni(c.Context(), driver, req.Email, logger)
+		data, err := repositories.RequestAlumniOneTimeRegistry(c.Context(), driver, req.Email, logger)
 		if err != nil {
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}
 
-		successMessage := "Request Email Checkup Succesfully"
+		successMessage := "If this email match in the database the one time request will be send to your email"
 		return HandleSuccess(c, fiber.StatusOK, successMessage, data, logger)
 	}
 }

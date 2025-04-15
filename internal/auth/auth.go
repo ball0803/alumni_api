@@ -63,6 +63,41 @@ func GenerateVerificationToken() string {
 	return hex.EncodeToString(token)
 }
 
+func GenerateRefNum() string {
+	token := make([]byte, 6)
+	_, err := rand.Read(token)
+	if err != nil {
+		fmt.Printf("Failed to generate ref: %v", err)
+	}
+	return hex.EncodeToString(token)
+}
+
+func GenerateOneTimeRegistryJWT(email string) (string, error) {
+	OTR := models.OneTimeRegistryJWT{
+		Email: email,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(72 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, OTR)
+	return token.SignedString(jwtSecret)
+}
+
+func ParseOTRJWT(tokenString string) (*models.OneTimeRegistryJWT, error) {
+	claims := &models.OneTimeRegistryJWT{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return jwtSecret, nil
+	})
+
+	if err != nil || !token.Valid {
+		return nil, err
+	}
+
+	return claims, nil
+}
+
 func GenerateVerificationJWT(userID, verifyToken string) (string, error) {
 	verify := models.Verify{
 		UserID:            userID,

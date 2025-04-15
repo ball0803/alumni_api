@@ -15,7 +15,8 @@ func AuthRoutes(group fiber.Router, driver neo4j.DriverWithContext, logger *zap.
 	auth.Post("/registry/alumnus", controllers.RegistryAlumnus(driver, logger))
 	auth.Post("/login", controllers.Login(driver, logger))
 	auth.Get("/verify-account", controllers.VerifyAccount(driver, logger))
-	auth.Get("/check_alumni_email", controllers.CheckAlumniExist(driver, logger))
+	auth.Post("/request_OTR", controllers.RequestAlumniOneTimeRegistry(driver, logger))
+	// auth.Get("/check_alumni_email", controllers.CheckAlumniExist(driver, logger))
 
 	authWithAuth := group.Group("/auth")
 	authWithAuth.Use(middlewares.JWTMiddleware(logger))

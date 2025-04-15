@@ -10,6 +10,11 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+type OneTimeRegistryJWT struct {
+	Email string `json:"email,omitempty" mapstructure:"email" validate:"required,email"`
+	jwt.RegisteredClaims
+}
+
 type Verify struct {
 	UserID            string `json:"user_id,omitempty" mapstructure:"user_id" validate:"required,uuid4"`
 	VerificationToken string `json:"token,omitempty" mapstructure:"token"`
@@ -37,8 +42,14 @@ type LoginRequest struct {
 	Password string `json:"password,omitempty" mapstructure:"password" validate:"required,min=8"`
 }
 
-type ReqistryRequest struct {
+type RegistryRequest struct {
 	Username string `json:"username" mapstructure:"username" validate:"omitempty"`
 	Email    string `json:"email,omitempty" mapstructure:"email" validate:"required,email"`
 	Password string `json:"password,omitempty" mapstructure:"password" validate:"required,min=8"`
+}
+
+type RegistryOneTimeRequest struct {
+	Username string `json:"username,omitempty" mapstructure:"username" validate:"omitempty"`
+	Password string `json:"password,omitempty" mapstructure:"password" validate:"required,min=8"`
+	Token    string `json:"token,omitempty" mapstructure:"token" validate:"required"`
 }

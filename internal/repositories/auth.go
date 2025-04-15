@@ -50,7 +50,103 @@ func Login(ctx context.Context, driver neo4j.DriverWithContext, username string,
 	return res, nil
 }
 
-func RegistryAlumnus(ctx context.Context, driver neo4j.DriverWithContext, user models.ReqistryRequest, logger *zap.Logger) (map[string]interface{}, error) {
+func RegistryAlumnus(ctx context.Context, driver neo4j.DriverWithContext, user models.RegistryOneTimeRequest, email string, logger *zap.Logger) error {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeWrite,
+	})
+	defer session.Close(ctx)
+
+	if user.Username == "" {
+		user.Username = email
+	}
+
+	// Start a transaction
+	tx, err := session.BeginTransaction(ctx)
+	if err != nil {
+		logger.Error("Failed to start transaction", zap.Error(err))
+		return fmt.Errorf("error starting transaction: %w", err)
+	}
+
+	// Defer a function to handle transaction rollback in case of failure
+	defer func() {
+		if err != nil {
+			logger.Info("Rolling back transaction due to error", zap.Error(err))
+			if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+				logger.Error("Failed to rollback transaction", zap.Error(rollbackErr))
+			}
+		}
+	}()
+
+	// Check if the username already exists
+	checkQuery := `
+    MATCH (u1:UserProfile {username: $username, is_verify: true})
+    RETURN 
+      u1 IS NOT NULL AS usernameExist,
+  `
+	checkParams := map[string]interface{}{
+		"username": user.Username,
+	}
+
+	checkResult, err := tx.Run(ctx, checkQuery, checkParams)
+	if err != nil {
+		logger.Error("Failed to check username uniqueness", zap.Error(err))
+		return fmt.Errorf("error checking username uniqueness: %w", err)
+	}
+
+	// Hash the password
+	hashedPass, err := auth.HashPassword(user.Password)
+	if err != nil {
+		logger.Error("Failed to hash password", zap.Error(err))
+		return fmt.Errorf("error hashing password: %w", err)
+	}
+
+	record, err := checkResult.Single(ctx)
+	if err != nil {
+		logger.Error("Failed to collect query results", zap.Error(err))
+		return fiber.NewError(fiber.StatusInternalServerError, "Error retrieving data")
+	}
+
+	usernameExist, _ := record.Get("usernameExist")
+	if usernameExist.(bool) {
+		logger.Error("User already used", zap.Error(err))
+		return fiber.NewError(fiber.StatusInternalServerError, "User already exist")
+	}
+
+	// Update the existing user with the new password and verification token
+	updateQuery := `
+  MATCH (u:UserProfile {email: $email})
+  SET
+    u.username = $username,
+    u.user_password = $password,
+    u.is_verify = true,
+    u.role = $role
+  RETURN u.user_id AS user_id
+  `
+
+	updateParams := map[string]interface{}{
+		"email":    email,
+		"username": user.Username,
+		"password": hashedPass,
+		"role":     "alumnus",
+	}
+
+	_, err = tx.Run(ctx, updateQuery, updateParams)
+	if err != nil {
+		logger.Error("Failed to update user", zap.Error(err))
+		return fmt.Errorf("error updating user: %w", err)
+	}
+
+	// Commit the transaction after sending the email
+	if err = tx.Commit(ctx); err != nil {
+		logger.Error("Failed to commit transaction", zap.Error(err))
+		return fmt.Errorf("error committing transaction: %w", err)
+	}
+
+	return nil
+}
+
+func RegistryAlumnus_Old(ctx context.Context, driver neo4j.DriverWithContext, user models.RegistryRequest, logger *zap.Logger) (map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -174,7 +270,7 @@ func RegistryAlumnus(ctx context.Context, driver neo4j.DriverWithContext, user m
 	return ret, nil
 }
 
-func RegistryUser(ctx context.Context, driver neo4j.DriverWithContext, user models.ReqistryRequest, logger *zap.Logger) (map[string]interface{}, error) {
+func RegistryUser(ctx context.Context, driver neo4j.DriverWithContext, user models.RegistryRequest, logger *zap.Logger) (map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -636,12 +732,29 @@ func VerifyEmail(ctx context.Context, driver neo4j.DriverWithContext, user_id, t
 	return nil
 }
 
-func CheckExistAlumni(ctx context.Context, driver neo4j.DriverWithContext, email string, logger *zap.Logger) (map[string]interface{}, error) {
+func RequestAlumniOneTimeRegistry(ctx context.Context, driver neo4j.DriverWithContext, email string, logger *zap.Logger) (map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeRead,
 	})
 	defer session.Close(ctx)
+
+	// Start a transaction
+	tx, err := session.BeginTransaction(ctx)
+	if err != nil {
+		logger.Error("Failed to start transaction", zap.Error(err))
+		return nil, fmt.Errorf("error starting transaction: %w", err)
+	}
+
+	// Defer a function to handle transaction rollback in case of failure
+	defer func() {
+		if err != nil {
+			logger.Info("Rolling back transaction due to error", zap.Error(err))
+			if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+				logger.Error("Failed to rollback transaction", zap.Error(rollbackErr))
+			}
+		}
+	}()
 
 	query := `
     MATCH (u:UserProfile {email: $email})
@@ -652,7 +765,7 @@ func CheckExistAlumni(ctx context.Context, driver neo4j.DriverWithContext, email
 		"email": email,
 	}
 
-	result, err := session.Run(ctx, query, params)
+	result, err := tx.Run(ctx, query, params)
 	if err != nil {
 		logger.Error("Failed to query user", zap.Error(err))
 		return nil, fiber.NewError(fiber.StatusInternalServerError, "Error querying user")
@@ -670,7 +783,38 @@ func CheckExistAlumni(ctx context.Context, driver neo4j.DriverWithContext, email
 		return nil, fiber.NewError(fiber.StatusInternalServerError, "Error Using the Query")
 	}
 
-	ret := map[string]interface{}{"isUserExist": userExists.(bool)}
+	ref := auth.GenerateRefNum()
+
+	if userExists.(bool) {
+		jwtToken, err := auth.GenerateOneTimeRegistryJWT(email)
+		if err != nil {
+			logger.Error("Failed to create verify jwt", zap.Error(err))
+			return nil, fmt.Errorf("failed to create verify jwt: %w", err)
+		}
+
+		if err = utils.SendOneTimeRegistryEmailSucc(email, jwtToken, ref); err != nil {
+			logger.Error("Failed to send verification email", zap.Error(err))
+			// Rollback the transaction if email sending fails
+			if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+				logger.Error("Failed to rollback transaction", zap.Error(rollbackErr))
+			}
+			return nil, fmt.Errorf("error sending verification email: %w", err)
+		}
+	} else {
+		if err = utils.SendOneTimeRegistryEmailFail(email, ref); err != nil {
+			logger.Error("Failed to send verification email", zap.Error(err))
+			// Rollback the transaction if email sending fails
+			if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+				logger.Error("Failed to rollback transaction", zap.Error(rollbackErr))
+			}
+			return nil, fmt.Errorf("error sending verification email: %w", err)
+		}
+
+	}
+
+	ret := map[string]interface{}{
+		"reference_number": ref,
+	}
 
 	return ret, nil
 }
