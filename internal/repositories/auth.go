@@ -80,9 +80,9 @@ func RegistryAlumnus(ctx context.Context, driver neo4j.DriverWithContext, user m
 
 	// Check if the username already exists
 	checkQuery := `
-    MATCH (u1:UserProfile {username: $username, is_verify: true})
-    RETURN 
-      u1 IS NOT NULL AS usernameExist,
+    OPTIONAL MATCH (u1:UserProfile {username: $username, is_verify: true})
+    RETURN
+      u1 IS NOT NULL AS usernameExist
   `
 	checkParams := map[string]interface{}{
 		"username": user.Username,
