@@ -69,12 +69,12 @@ const OneTimeRegistrySucc = `
               <h2 style="color: #1e88e5; text-align: center;">One Time Registry</h2>
               <p>Hi,</p>
               <p>You recently requested one time registration for your CPE Alumni account. Click the button below to proceed.</p>
-              <a href="https://alumni.cpe.kmutt.ac.th/registyCPE?token=%s" class="button">Registry/a>
+              <a href="https://alumni.cpe.kmutt.ac.th/registyCPE?token=%s" class="button">Registry</a>
               <p class="help-text">
                 If you did not request a registration reset, please ignore this email or reply to let us know.
                 This request link is only valid for the next 1 hour.
               </p>
-              <h3 style="color: #1e88e5; text-align: center;">Ref: %s</h2>
+              <h3 style="color: #1e88e5; text-align: center;">Ref: %s</h3>
               <p>Thanks,<br>the CPE Alumni team</p>
           </div>
           <div class="footer">
@@ -158,7 +158,7 @@ const OneTimeRegistryFail = `
               <p>Your email doesn't exist in the current database please proceed to normal registration</p>
               <p>But if you are alumni you can request the role in the future and wait for admin approval</p>
               <p>Thanks,<br>the CPE Alumni team</p>
-              <h3 style="color: #1e88e5; text-align: center;">Ref: %s</h2>
+              <h3 style="color: #1e88e5; text-align: center;">Ref: %s</h3>
           </div>
           <div class="footer">
               <p>&copy; 2025 CPE Alumni</p>
