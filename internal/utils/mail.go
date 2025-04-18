@@ -5,8 +5,10 @@ import (
 	"alumni_api/internal/utils/mail_format"
 	"fmt"
 
+	"crypto/tls"
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
+	"net"
 	"net/smtp"
 	"strings"
 	// "gopkg.in/gomail.v2"
@@ -19,32 +21,70 @@ func sendEmailHTML(toEmail, subject, html string) error {
 	smtpHost := "smtp.gmail.com"
 	smtpPort := "587"
 
+	// 1. Build the email headers and body (unchanged from your original code)
 	fromHeader := fmt.Sprintf("%s <%s>", fromName, fromEmail)
+	headers := map[string]string{
+		"From":         fromHeader,
+		"To":           toEmail,
+		"Subject":      subject,
+		"MIME-Version": "1.0",
+		"Content-Type": "text/html; charset=\"UTF-8\"",
+	}
 
-	// Properly formatted MIME headers
-	headers := make(map[string]string)
-	headers["From"] = fromHeader
-	headers["To"] = toEmail
-	headers["Subject"] = subject
-	headers["MIME-Version"] = "1.0"
-	headers["Content-Type"] = "text/html; charset=\"UTF-8\""
-
-	// Build the message
 	var msg strings.Builder
 	for k, v := range headers {
 		msg.WriteString(fmt.Sprintf("%s: %s\r\n", k, v))
 	}
-	msg.WriteString("\r\n" + html) // Separate headers and body with \r\n
+	msg.WriteString("\r\n" + html)
 
+	// 2. Manually handle the SMTP connection with TLS
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", smtpHost, smtpPort))
+	if err != nil {
+		return fmt.Errorf("failed to connect: %v", err)
+	}
+	defer conn.Close()
+
+	// 3. Create an SMTP client
+	client, err := smtp.NewClient(conn, smtpHost)
+	if err != nil {
+		return fmt.Errorf("failed to create client: %v", err)
+	}
+	defer client.Close()
+
+	// 4. Enable STARTTLS with custom TLS config
+	tlsConfig := &tls.Config{
+		ServerName: smtpHost, // Verify the server's certificate
+		// InsecureSkipVerify: true, // ⚠️ Uncomment ONLY for testing (disable cert verification)
+	}
+	if err = client.StartTLS(tlsConfig); err != nil {
+		return fmt.Errorf("STARTTLS failed: %v", err)
+	}
+
+	// 5. Authenticate
 	auth := smtp.PlainAuth("", fromEmail, password, smtpHost)
-	err := smtp.SendMail(
-		fmt.Sprintf("%s:%s", smtpHost, smtpPort),
-		auth,
-		fromEmail,
-		[]string{toEmail},
-		[]byte(msg.String()),
-	)
-	return err
+	if err = client.Auth(auth); err != nil {
+		return fmt.Errorf("auth failed: %v", err)
+	}
+
+	// 6. Send the email
+	if err = client.Mail(fromEmail); err != nil {
+		return fmt.Errorf("mail failed: %v", err)
+	}
+	if err = client.Rcpt(toEmail); err != nil {
+		return fmt.Errorf("rcpt failed: %v", err)
+	}
+
+	w, err := client.Data()
+	if err != nil {
+		return fmt.Errorf("data failed: %v", err)
+	}
+	defer w.Close()
+
+	if _, err = fmt.Fprint(w, msg.String()); err != nil {
+		return fmt.Errorf("write failed: %v", err)
+	}
+
+	return nil
 }
 
 func sendEmail(toEmail, subject, body string) error {
