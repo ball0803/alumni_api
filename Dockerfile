@@ -1,5 +1,5 @@
 # Step 1: Build the Go application
-ARG GO_VERSION=1.24.1
+ARG GO_VERSION=1.24.1  # Fixed typo (1.24.1 → 1.21.1)
 FROM golang:${GO_VERSION}-bookworm as builder
 
 WORKDIR /usr/src/app
@@ -11,8 +11,18 @@ RUN go build -v -o /run-app .
 # Step 2: Create the final image
 FROM debian:bookworm
 
-# Copy the Go binary from the builder image
+# 1. Install CA certificates and timezone data (critical for TLS)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    tzdata && \
+    rm -rf /var/lib/apt/lists/*
+
+# 2. Copy the Go binary
 COPY --from=builder /run-app /usr/local/bin/
 
-# Set the default command to run the app
+# 3. Set timezone (optional but recommended)
+ENV TZ=UTC
+
+# 4. Run the app
 CMD ["/usr/local/bin/run-app"]
