@@ -4,7 +4,6 @@ import (
 	"alumni_api/internal/models"
 	"alumni_api/internal/utils"
 	"context"
-	"fmt"
 	"net/http"
 	"slices"
 	"time"
@@ -400,8 +399,6 @@ func CommentPost(ctx context.Context, driver neo4j.DriverWithContext, userID, po
 		"comment":    comment,
 	}
 
-	fmt.Println(query, params)
-
 	_, err := session.Run(ctx, query, params)
 	if err != nil {
 		logger.Error("Failed to comment on post", zap.Error(err))
@@ -455,7 +452,7 @@ func UpdateCommentPost(ctx context.Context, driver neo4j.DriverWithContext, comm
 
 	query := `
     MATCH (c:Comment {comment_id: $comment_id})
-    SET c.comment = $comment
+    SET c.comment = $comment,
         c.updated_timestamp = timestamp()
   `
 
