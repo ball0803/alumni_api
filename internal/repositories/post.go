@@ -4,13 +4,15 @@ import (
 	"alumni_api/internal/models"
 	"alumni_api/internal/utils"
 	"context"
+	"fmt"
+	"net/http"
+	"slices"
+	"time"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"go.uber.org/zap"
-	"net/http"
-	"slices"
-	"time"
 )
 
 func GetAllPosts(ctx context.Context, driver neo4j.DriverWithContext, logger *zap.Logger) ([]map[string]interface{}, error) {
@@ -398,6 +400,8 @@ func CommentPost(ctx context.Context, driver neo4j.DriverWithContext, userID, po
 		"comment":    comment,
 	}
 
+	fmt.Println(query, params)
+
 	_, err := session.Run(ctx, query, params)
 	if err != nil {
 		logger.Error("Failed to comment on post", zap.Error(err))
@@ -418,12 +422,12 @@ func ReplyComment(ctx context.Context, driver neo4j.DriverWithContext, userID, c
 
 	query := `
     MATCH (u:UserProfile {user_id: $user_id})
-    MATCH (c:Comment {comment_id: $comment_id})
-    CREATE (u)<-[:COMMENTED_BY]-(c:Comment {
+    MATCH (c1:Comment {comment_id: $comment_id})
+    CREATE (u)<-[:COMMENTED_BY]-(c2:Comment {
       comment_id: $reply_id,
       comment: $comment,
       created_timestamp: timestamp()
-    })-[:REPLIES_TO]->(c)
+    })-[:REPLIES_TO]->(c1)
   `
 
 	params := map[string]interface{}{
