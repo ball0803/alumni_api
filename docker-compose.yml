@@ -7,18 +7,12 @@ services:
     restart: always
     volumes:
       - ./config/loki-config.yaml:/etc/loki/loki-config.yaml
+      - loki_data:/loki
     ports:
       - "3100:3100"
     networks:
       - backend
     command: -config.file=/etc/loki/loki-config.yaml
-    logging:
-      driver: loki
-      options:
-        loki-url: "http://localhost:3100/loki/api/v1/push"
-        mode: non-blocking
-        max-buffer-size: 4m
-        loki-retries: "3"
 
   promtail:
     image: grafana/promtail:3.4.2
@@ -138,8 +132,8 @@ services:
 
 volumes:
   neo4j_data:
+  loki_data:
 
 networks:
   backend:
     driver: bridge
-
