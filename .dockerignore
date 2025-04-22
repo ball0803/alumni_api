@@ -2,3 +2,4 @@
 **\.env
 fly.toml
 *.log
+tmp/main.exe
