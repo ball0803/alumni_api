@@ -8,6 +8,7 @@ import (
 	"alumni_api/internal/routes"
 	"alumni_api/internal/validators"
 	"context"
+	"crypto/tls"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -41,6 +42,25 @@ func main() {
 		AllowCredentials: true,
 	}))
 
+	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
+	if err != nil {
+		logger.Fatal("Error loading certificate: ", zap.Error(err))
+	}
+
+	tlsConfig := &tls.Config{
+		Certificates:     []tls.Certificate{cert},
+		MinVersion:       tls.VersionTLS12,
+		CurvePreferences: []tls.CurveID{tls.X25519, tls.CurveP256},
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+		},
+	}
+
 	api.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Hello, World!")
 	})
@@ -59,7 +79,13 @@ func main() {
 	routes.StatRoutes(api, driver, logger)
 
 	// Start the server
-	if err := app.Listen(cfg.ServerPort); err != nil {
+	ln, err := tls.Listen("tcp", cfg.ServerPort, tlsConfig)
+	if err != nil {
+		logger.Fatal("Listener error:", zap.Error(err))
+	}
+
+	// Start with TLS
+	if err := app.Listener(ln); err != nil {
 		logger.Fatal("Failed to start server", zap.Error(err))
 	}
 }
