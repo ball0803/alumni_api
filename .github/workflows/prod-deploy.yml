@@ -52,12 +52,14 @@ jobs:
           fi
           echo "Deploying to $NEW_COLOR"
           
-      - name: Build new container
-        run: docker-compose -f docker-compose.prod.yml --env-file .env build api-$NEW_COLOR
+      - name: Build and Deploy new container
+        run:
+        # run: docker-compose -f docker-compose.prod.yml --env-file .env build api-$NEW_COLOR
+          docker-compose -f docker-compose.prod.yml --env-file .env up -d --build api-$NEW_COLOR
         
-      - name: Start new container
+      - name: Check Health
         run: |
-          docker-compose -f docker-compose.prod.yml --env-file .env up -d api-$NEW_COLOR
+          # docker-compose -f docker-compose.prod.yml --env-file .env up -d api-$NEW_COLOR
           
           # Wait for new container to be healthy
           timeout 120 bash -c 'while [[ "$(docker inspect -f "{{.State.Health.Status}}" alumni-api-$NEW_COLOR)" != "healthy" ]]; do sleep 5; done' || false
