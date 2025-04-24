@@ -104,7 +104,7 @@ func GetPostByID(ctx context.Context, driver neo4j.DriverWithContext, postID str
       COUNT(v) AS views_count,
       COALESCE(COLLECT(DISTINCT {
         comment_id: comment.comment_id,
-        content: comment.content,
+        content: comment.comment,
         created_timestamp: comment.created_timestamp,
         commenter_name: commenter.first_name + " " + commenter.last_name,
         commenter_user_id: commenter.user_id,
@@ -113,7 +113,7 @@ func GetPostByID(ctx context.Context, driver neo4j.DriverWithContext, postID str
       COALESCE(COLLECT(DISTINCT {
         parent_comment_id: comment.comment_id,
         reply_id: reply.comment_id,
-        reply_content: reply.content,
+        reply_content: reply.comment,
         reply_timestamp: reply.created_timestamp,
         replier_name: replier.first_name + " " + replier.last_name,
         replier_user_id: replier.user_id,
@@ -399,8 +399,6 @@ func CommentPost(ctx context.Context, driver neo4j.DriverWithContext, userID, po
 		"comment_id": commentID,
 		"comment":    comment,
 	}
-
-	fmt.Println(query, params)
 
 	_, err := session.Run(ctx, query, params)
 	if err != nil {
