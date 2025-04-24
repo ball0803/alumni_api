@@ -1,0 +1,60 @@
+name: Production Deployment
+
+on:
+  push:
+    branches: [prod]
+  workflow_dispatch:
+
+env:
+  COMPOSE_FILE: docker-compose.prod.yml
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Determine deployment color
+        id: color
+        run: |
+          # Check which color is currently active
+          if docker ps | grep -q "alumni-api-blue"; then
+            echo "NEW_COLOR=green" >> $GITHUB_ENV
+            echo "OLD_COLOR=blue" >> $GITHUB_ENV
+          else
+            echo "NEW_COLOR=blue" >> $GITHUB_ENV
+            echo "OLD_COLOR=green" >> $GITHUB_ENV
+          fi
+          echo "Deploying to $NEW_COLOR"
+          
+      - name: Build new container
+        run: docker-compose build api-$NEW_COLOR
+        
+      - name: Start new container
+        run: |
+          docker-compose up -d api-$NEW_COLOR
+          
+          # Wait for new container to be healthy
+          timeout 120 bash -c 'while [[ "$(docker inspect -f "{{.State.Health.Status}}" alumni-api-$NEW_COLOR)" != "healthy" ]]; do sleep 5; done' || false
+          
+      - name: Switch traffic
+        run: |
+          # Make the new container active
+          docker exec nginx /bin/sh /scripts/switch-color.sh
+          
+          # Verify switch
+          CURRENT_COLOR=$(docker exec nginx grep -oP 'server alumni-api-\K(blue|green)' /etc/nginx/nginx.conf)
+          if [ "$CURRENT_COLOR" != "$NEW_COLOR" ]; then
+            echo "Color switch failed!"
+            exit 1
+          fi
+          
+      - name: Stop old container
+        run: |
+          docker-compose stop api-$OLD_COLOR
+          
+      - name: Clean up
+        run: |
+          docker system prune -f
