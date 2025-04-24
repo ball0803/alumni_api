@@ -81,8 +81,8 @@ services:
     build: .
     container_name: alumni-api-blue
     restart: unless-stopped
-    depends_on:
-      - neo4j
+    # depends_on:
+    #   - neo4j
     environment:
       - DB_ENV=${DB_ENV}
       - NEO4J_LOCAL_URI=${NEO4J_LOCAL_CONTAINER_URI}
@@ -118,8 +118,8 @@ services:
     build: .
     container_name: alumni-api-green
     restart: unless-stopped
-    depends_on:
-      - neo4j
+    # depends_on:
+    #   - neo4j
     environment:
       - DB_ENV=${DB_ENV}
       - NEO4J_LOCAL_URI=${NEO4J_LOCAL_CONTAINER_URI}
