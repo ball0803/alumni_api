@@ -98,7 +98,7 @@ services:
       - PORT=${PORT}
       - ENV=${ENV}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/v1 || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 3
@@ -135,7 +135,7 @@ services:
       - PORT=${PORT}
       - ENV=${ENV}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/v1 || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 3

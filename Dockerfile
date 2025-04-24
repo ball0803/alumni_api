@@ -18,11 +18,14 @@ RUN apt-get update && \
     tzdata && \
     rm -rf /var/lib/apt/lists/*
 
-# 2. Copy the Go binary
+# 2. Add curl for health check
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# 3. Copy the Go binary
 COPY --from=builder /run-app /usr/local/bin/
 
-# 3. Set timezone (optional but recommended)
+# 4. Set timezone (optional but recommended)
 ENV TZ=UTC
 
-# 4. Run the app
+# 5. Run the app
 CMD ["/usr/local/bin/run-app"]
