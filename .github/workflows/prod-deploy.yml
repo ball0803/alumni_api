@@ -15,6 +15,29 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: |
+          cat <<EOF > .env
+          DB_ENV=${{ secrets.DB_ENV }}
+          NEO4J_LOCAL_URI=${{ secrets.NEO4J_LOCAL_URI }}
+          NEO4J_LOCAL_CONTAINER_URI=${{ secrets.NEO4J_LOCAL_CONTAINER_URI }}
+          NEO4J_LOCAL_USERNAME=${{ secrets.NEO4J_LOCAL_USERNAME }}
+          NEO4J_LOCAL_PASSWORD=${{ secrets.NEO4J_LOCAL_PASSWORD }}
+          NEO4J_LOCAL_CONTAINER_PASSWORD=${{ secrets.NEO4J_LOCAL_CONTAINER_PASSWORD }}
+          NEO4J_AURA_URI=${{ secrets.NEO4J_AURA_URI }}
+          NEO4J_AURA_USERNAME=${{ secrets.NEO4J_AURA_USERNAME }}
+          NEO4J_AURA_PASSWORD=${{ secrets.NEO4J_AURA_PASSWORD }}
+          JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+          AES_ENCRYPTION_KEY=${{ secrets.AES_ENCRYPTION_KEY }}
+          SENDGUN_API_KEY=${{ secrets.SENDGUN_API_KEY }}
+          GF_SECURITY_ADMIN_PASSWORD=${{ secrets.GF_SECURITY_ADMIN_PASSWORD }}
+          SENDER_GMAIL=${{ secrets.SENDER_GMAIL }}
+          SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+          PORT=${{ secrets.PORT }}
+          ENV=${{ secrets.ENV }}
+          EOF
+        shell: bash
         
       - name: Determine deployment color
         id: color
@@ -34,7 +57,7 @@ jobs:
         
       - name: Start new container
         run: |
-          docker-compose -f docker-compose.prod.yml up -d api-$NEW_COLOR
+          docker-compose -f docker-compose.prod.yml --env-file .env up -d api-$NEW_COLOR
           
           # Wait for new container to be healthy
           timeout 120 bash -c 'while [[ "$(docker inspect -f "{{.State.Health.Status}}" alumni-api-$NEW_COLOR)" != "healthy" ]]; do sleep 5; done' || false
