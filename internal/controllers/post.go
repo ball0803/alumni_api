@@ -230,13 +230,13 @@ func ReplyComment(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Hand
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err := repositories.ReplyComment(c.Context(), driver, claim.UserID, commentID, req.Comment, logger)
+		data, err := repositories.ReplyComment(c.Context(), driver, claim.UserID, commentID, req.Comment, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
 
 		successMessage := "Create comment Succesfully"
-		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
+		return HandleSuccess(c, fiber.StatusOK, successMessage, data, logger)
 	}
 }
 

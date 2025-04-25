@@ -411,7 +411,7 @@ func CommentPost(ctx context.Context, driver neo4j.DriverWithContext, userID, po
 	return ret, nil
 }
 
-func ReplyComment(ctx context.Context, driver neo4j.DriverWithContext, userID, commentID, comment string, logger *zap.Logger) error {
+func ReplyComment(ctx context.Context, driver neo4j.DriverWithContext, userID, commentID, comment string, logger *zap.Logger) (map[string]interface{},error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -440,10 +440,13 @@ func ReplyComment(ctx context.Context, driver neo4j.DriverWithContext, userID, c
 	_, err := session.Run(ctx, query, params)
 	if err != nil {
 		logger.Error("Failed to reply on comment", zap.Error(err))
-		return fiber.NewError(http.StatusInternalServerError, "Failed to reply on comment")
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to reply on comment")
 	}
+  ret := map[string]interface{}{
+    "comment_id": replyID,
+  }
 
-	return nil
+	return ret, nil
 }
 
 func UpdateCommentPost(ctx context.Context, driver neo4j.DriverWithContext, commentID, comment string, logger *zap.Logger) error {
