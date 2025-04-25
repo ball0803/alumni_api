@@ -74,6 +74,52 @@ func GetAllPosts(ctx context.Context, driver neo4j.DriverWithContext, logger *za
 	return posts, nil
 }
 
+func GetPostByID_v2(ctx context.Context, driver neo4j.DriverWithContext, postID string, logger *zap.Logger) (map[string]interface{}, error) {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeRead,
+	})
+	defer session.Close(ctx)
+
+	query := `
+    MATCH (p:Post {post_id: $post_id})<-[:HAS_POST]-(author:UserProfile)
+    OPTIONAL MATCH (p)<-[l:LIKES]-(:UserProfile)
+    OPTIONAL MATCH (p)<-[v:HAS_VIEWED]-(viewer:UserProfile)
+    RETURN
+      p.post_id AS post_id,
+      p.title AS title,
+      p.content AS content,
+      p.post_type AS post_type,
+      p.media_urls AS media_urls,
+      p.start_date AS start_date,
+      p.end_date AS end_date,
+      p.created_timestamp AS created_timestamp,
+      author.first_name + " " + author.last_name AS author_name,
+      author.user_id AS author_user_id,
+      author.profile_picture AS author_profile_picture,
+      COUNT(l) AS likes_count,
+      COUNT(v) AS views_count
+  `
+
+	params := map[string]interface{}{
+		"post_id": postID,
+	}
+
+	result, err := session.Run(ctx, query, params)
+	if err != nil {
+		logger.Error("Failed to retrieve posts", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to retrieve posts")
+	}
+
+	record, err := result.Single(ctx)
+	if err != nil {
+		logger.Error("Failed to collect results", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to collect results")
+	}
+
+	return record.AsMap(), nil
+}
+
 func GetPostByID(ctx context.Context, driver neo4j.DriverWithContext, postID string, logger *zap.Logger) (map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
@@ -427,7 +473,7 @@ func ReplyComment(ctx context.Context, driver neo4j.DriverWithContext, userID, c
       comment_id: $reply_id,
       comment: $comment,
       created_timestamp: timestamp()
-    })-[:REPLIES_TO]->(c1)
+    })-[:COMMENTED_ON]->(c1)
   `
 
 	params := map[string]interface{}{
