@@ -373,7 +373,7 @@ func UnlikePost(ctx context.Context, driver neo4j.DriverWithContext, userID, pos
 	return nil
 }
 
-func CommentPost(ctx context.Context, driver neo4j.DriverWithContext, userID, postID, comment string, logger *zap.Logger) error {
+func CommentPost(ctx context.Context, driver neo4j.DriverWithContext, userID, postID, comment string, logger *zap.Logger) (map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -402,10 +402,13 @@ func CommentPost(ctx context.Context, driver neo4j.DriverWithContext, userID, po
 	_, err := session.Run(ctx, query, params)
 	if err != nil {
 		logger.Error("Failed to comment on post", zap.Error(err))
-		return fiber.NewError(http.StatusInternalServerError, "Failed to comment on post")
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to comment on post")
+	}
+	ret := map[string]interface{}{
+		"comment_id": commentID,
 	}
 
-	return nil
+	return ret, nil
 }
 
 func ReplyComment(ctx context.Context, driver neo4j.DriverWithContext, userID, commentID, comment string, logger *zap.Logger) error {

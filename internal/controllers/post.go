@@ -30,9 +30,9 @@ func GetPostByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 	return func(c *fiber.Ctx) error {
 		postID := c.Params("post_id")
 
-		// if err := validators.UUID(postID); err != nil {
-		// 	return HandleFailWithStatus(c, err, logger)
-		// }
+		if err := validators.UUID(postID); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
 
 		if tokenString, ok := auth.ExtractJWT(c); ok {
 			if claims, err := auth.ParseJWT(tokenString); err == nil {
@@ -201,13 +201,13 @@ func CommentPost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		err := repositories.CommentPost(c.Context(), driver, claim.UserID, postID, req.Comment, logger)
+		data, err := repositories.CommentPost(c.Context(), driver, claim.UserID, postID, req.Comment, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
 
 		successMessage := "Create comment Succesfully"
-		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
+		return HandleSuccess(c, fiber.StatusOK, successMessage, data, logger)
 	}
 }
 
