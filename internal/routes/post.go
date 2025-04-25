@@ -14,6 +14,7 @@ func PostRoutes(group fiber.Router, driver neo4j.DriverWithContext, logger *zap.
 	// accessible to public
 	post.Get("/all", controllers.GetAllPost(driver, logger))
 	post.Get("/:post_id", controllers.GetPostByID(driver, logger))
+	post.Get("/:post_id/comment", controllers.GetCommentByPostID(driver, logger))
 
 	postWithAuth := group.Group("/post")
 	postWithAuth.Use(middlewares.JWTMiddleware(logger))

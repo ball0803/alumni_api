@@ -28,6 +28,18 @@ type UpdatePostRequest struct {
 	Visibility string    `json:"visibility,omitempty" mapstructure:"visibility" validate:"omitempty,oneof=alumnus admin all"`
 }
 
+type Comment struct {
+	CommentID       string    `json:"comment_id"`
+	Content         string    `json:"content"`
+	CreatedAt       int64     `json:"created_timestamp"`
+	UserID          string    `json:"user_id"`
+	Username        string    `json:"username"`
+	Name            string    `json:"name,omitempty"`
+	ProfilePicture  string    `json:"profile_picture,omitempty"`
+	ParentCommentID *string   `json:"parent_comment_id,omitempty"`
+	Replies         []Comment `json:"replies,omitempty"`
+}
+
 type CommentRequest struct {
 	Comment string `json:"comment,omitempty" mapstructure:"comment" validate:"required,max=200"`
 }

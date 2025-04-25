@@ -5,6 +5,22 @@ import (
 	"time"
 )
 
+// Helpers to safely convert Neo4j values
+func SafeString(v any) string {
+	if v == nil {
+		return ""
+	}
+	return v.(string)
+}
+
+func OptionalString(v any) *string {
+	if v == nil {
+		return nil
+	}
+	s := v.(string)
+	return &s
+}
+
 func CheckMapWithTimeField(data interface{}) bool {
 	// Use reflection to get the value of the data
 	v := reflect.ValueOf(data)

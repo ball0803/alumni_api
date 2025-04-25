@@ -53,15 +53,26 @@ func GetPostByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 			return HandleErrorWithStatus(c, err, logger)
 		}
 
-		comment, err := services.GetCommentByPostID(c.Context(), driver, postID, logger)
+		successMessage := "Get Post Sucessfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, posts, logger)
+	}
+}
+
+func GetCommentByPostID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		postID := c.Params("post_id")
+
+		if err := validators.UUID(postID); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		comment, err := repositories.GetCommentByPostID(c.Context(), driver, postID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
 
-    posts["comment"] = comment
-
-		successMessage := "Get Post Sucessfully"
-		return HandleSuccess(c, fiber.StatusOK, successMessage, posts, logger)
+		successMessage := "Get Comment Sucessfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, comment, logger)
 	}
 }
 

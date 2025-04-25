@@ -1,6 +1,7 @@
 package services
 
 import (
+	"alumni_api/internal/models"
 	"context"
 	"fmt"
 	"net/http"
@@ -126,21 +127,9 @@ func GetCommentUserID(ctx context.Context, driver neo4j.DriverWithContext, comme
 	return userIDStr, nil
 }
 
-type Comment struct {
-	CommentID       string    `json:"comment_id"`
-	Content         string    `json:"content"`
-	CreatedAt       int64     `json:"created_timestamp"`
-	UserID          string    `json:"user_id"`
-	Username        string    `json:"username"`
-	Name            string    `json:"name,omitempty"`
-	ProfilePicture  string    `json:"profile_picture,omitempty"`
-	ParentCommentID *string   `json:"parent_comment_id,omitempty"`
-	Replies         []Comment `json:"replies,omitempty"`
-}
-
-func buildCommentTree(flat []Comment) []Comment {
-	idToComment := make(map[string]*Comment)
-	var roots []*Comment
+func BuildCommentTree(flat []models.Comment) []models.Comment {
+	idToComment := make(map[string]*models.Comment)
+	var roots []*models.Comment
 
 	for i := range flat {
 		idToComment[flat[i].CommentID] = &flat[i]
@@ -156,87 +145,9 @@ func buildCommentTree(flat []Comment) []Comment {
 		}
 	}
 
-	var result []Comment
+	var result []models.Comment
 	for _, r := range roots {
 		result = append(result, *r)
 	}
 	return result
-}
-
-func GetCommentByPostID(ctx context.Context, driver neo4j.DriverWithContext, postID string, logger *zap.Logger) ([]Comment, error) {
-	session := driver.NewSession(ctx, neo4j.SessionConfig{
-		DatabaseName: "neo4j",
-		AccessMode:   neo4j.AccessModeRead,
-	})
-	defer session.Close(ctx)
-
-	query := `
-      MATCH (p:Post {post_id: $post_id})<-[:HAS_POST]-(:UserProfile)
-      MATCH (comment:Comment)-[:COMMENTED_ON]->(target)
-      WHERE target = p OR target:Comment
-      OPTIONAL MATCH (comment)-[:COMMENTED_BY]->(user:UserProfile)
-      RETURN
-          comment.comment_id AS comment_id,
-          comment.comment AS content,
-          comment.created_timestamp AS created_timestamp,
-          user.user_id AS user_id,
-          user.username AS username,
-          user.first_name + user.last_name AS name,
-          user.profile_picture AS profile_picture,
-          CASE
-              WHEN target:Post THEN null
-              ELSE target.comment_id
-          END AS parent_comment_id
-      ORDER BY created_timestamp
-    `
-
-	params := map[string]any{"post_id": postID}
-	result, err := session.Run(ctx, query, params)
-	if err != nil {
-		logger.Error("Comment query failed", zap.Error(err))
-		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to fetch comments")
-	}
-
-	records, err := result.Collect(ctx)
-	if err != nil {
-		logger.Error("Failed to collect comments", zap.Error(err))
-		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to process comments")
-	}
-
-	var comments []Comment
-
-	for _, record := range records {
-		comment := Comment{
-			CommentID:       record.Values[0].(string),
-			Content:         record.Values[1].(string),
-			CreatedAt:       int64(record.Values[2].(int64)),
-			UserID:          safeString(record.Values[3]),
-			Username:        safeString(record.Values[4]),
-			Name:            safeString(record.Values[5]),
-			ProfilePicture:  safeString(record.Values[6]),
-			ParentCommentID: optionalString(record.Values[7]),
-		}
-		comments = append(comments, comment)
-	}
-	// fmt.Println(comments)
-
-	nested := buildCommentTree(comments)
-	fmt.Println(nested)
-	return nested, nil
-}
-
-// Helpers to safely convert Neo4j values
-func safeString(v any) string {
-	if v == nil {
-		return ""
-	}
-	return v.(string)
-}
-
-func optionalString(v any) *string {
-	if v == nil {
-		return nil
-	}
-	s := v.(string)
-	return &s
 }

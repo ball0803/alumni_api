@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"alumni_api/internal/models"
+	"alumni_api/internal/services"
 	"alumni_api/internal/utils"
 	"context"
 	"net/http"
@@ -417,6 +418,65 @@ func UnlikePost(ctx context.Context, driver neo4j.DriverWithContext, userID, pos
 	}
 
 	return nil
+}
+
+func GetCommentByPostID(ctx context.Context, driver neo4j.DriverWithContext, postID string, logger *zap.Logger) ([]models.Comment, error) {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeRead,
+	})
+	defer session.Close(ctx)
+
+	query := `
+      MATCH (p:Post {post_id: $post_id})<-[:HAS_POST]-(:UserProfile)
+      MATCH (comment:Comment)-[:COMMENTED_ON]->(target)
+      WHERE target = p OR target:Comment
+      OPTIONAL MATCH (comment)-[:COMMENTED_BY]->(user:UserProfile)
+      RETURN
+          comment.comment_id AS comment_id,
+          comment.comment AS content,
+          comment.created_timestamp AS created_timestamp,
+          user.user_id AS user_id,
+          user.username AS username,
+          user.first_name + user.last_name AS name,
+          user.profile_picture AS profile_picture,
+          CASE
+              WHEN target:Post THEN null
+              ELSE target.comment_id
+          END AS parent_comment_id
+      ORDER BY created_timestamp
+    `
+
+	params := map[string]any{"post_id": postID}
+	result, err := session.Run(ctx, query, params)
+	if err != nil {
+		logger.Error("Comment query failed", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to fetch comments")
+	}
+
+	records, err := result.Collect(ctx)
+	if err != nil {
+		logger.Error("Failed to collect comments", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to process comments")
+	}
+
+	var comments []models.Comment
+
+	for _, record := range records {
+		comment := models.Comment{
+			CommentID:       record.Values[0].(string),
+			Content:         record.Values[1].(string),
+			CreatedAt:       int64(record.Values[2].(int64)),
+			UserID:          utils.SafeString(record.Values[3]),
+			Username:        utils.SafeString(record.Values[4]),
+			Name:            utils.SafeString(record.Values[5]),
+			ProfilePicture:  utils.SafeString(record.Values[6]),
+			ParentCommentID: utils.OptionalString(record.Values[7]),
+		}
+		comments = append(comments, comment)
+	}
+	nested := services.BuildCommentTree(comments)
+	return nested, nil
 }
 
 func CommentPost(ctx context.Context, driver neo4j.DriverWithContext, userID, postID, comment string, logger *zap.Logger) (map[string]interface{}, error) {
