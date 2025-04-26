@@ -21,6 +21,23 @@ func ExtractJWT(c *fiber.Ctx, logger *zap.Logger) (string, bool) {
 	return authHeader[len("Bearer "):], true
 }
 
+func VerifyToken(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		claim, ok := c.Locals("claims").(*models.Claims)
+		if !ok {
+			return HandleFail(c, fiber.StatusUnauthorized, "Unauthorized claim", logger, nil)
+		}
+
+		ret := map[string]interface{}{
+			"user_id":   claim.UserID,
+			"user_role": claim.Role,
+		}
+
+		successMessage := "Verify Succesfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, ret, logger)
+	}
+}
+
 func Login(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req models.LoginRequest

@@ -10,7 +10,8 @@ import (
 
 func JWTMiddleware(logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		tokenString, ok := auth.ExtractJWT(c)
+		// tokenString, ok := auth.ExtractJWT(c)
+		tokenString, ok := auth.ExtractJWT_Cookie(c)
 		if !ok {
 			return controllers.HandleFail(c, fiber.StatusUnauthorized, "Missing Token", logger, nil)
 		}

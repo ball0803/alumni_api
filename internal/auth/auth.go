@@ -24,6 +24,15 @@ func ExtractJWT(c *fiber.Ctx) (string, bool) {
 	return authHeader[len("Bearer "):], true
 }
 
+func ExtractJWT_Cookie(c *fiber.Ctx) (string, bool) {
+	tokenString := c.Cookies("jwt")
+	if tokenString == "" {
+		return "", false
+	}
+
+	return tokenString, true
+}
+
 // GenerateJWT generates a JWT for a user
 func GenerateJWT(userID, role string, admitYear int) (string, error) {
 	claims := models.Claims{
