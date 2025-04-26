@@ -73,8 +73,11 @@ func Login(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 			Name:     "jwt",
 			Value:    token,
 			HTTPOnly: true,
-			Secure:   true, // Enable in production (HTTPS only)
-			SameSite: "Strict",
+			// TODO: Turn back to strict when frontend in production
+			// Secure:   true, // Enable in production (HTTPS only)
+			// SameSite: "Strict",
+			Secure:   false,
+			SameSite: "None",
 			MaxAge:   1 * 24 * 60 * 60 * 1000, // 1 day
 		})
 
