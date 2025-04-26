@@ -75,7 +75,7 @@ func GetAllPosts(ctx context.Context, driver neo4j.DriverWithContext, logger *za
 	return posts, nil
 }
 
-func GetPostByID_v2(ctx context.Context, driver neo4j.DriverWithContext, postID string, logger *zap.Logger) (map[string]interface{}, error) {
+func GetPostByID(ctx context.Context, driver neo4j.DriverWithContext, postID, userID string, logger *zap.Logger) (map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeRead,
@@ -86,6 +86,7 @@ func GetPostByID_v2(ctx context.Context, driver neo4j.DriverWithContext, postID 
     MATCH (p:Post {post_id: $post_id})<-[:HAS_POST]-(author:UserProfile)
     OPTIONAL MATCH (p)<-[l:LIKES]-(:UserProfile)
     OPTIONAL MATCH (p)<-[v:HAS_VIEWED]-(viewer:UserProfile)
+    OPTIONAL MATCH (p)<-[userLike:LIKES]-(:UserProfile {user_id: $user_id})
     RETURN
       p.post_id AS post_id,
       p.title AS title,
@@ -99,11 +100,13 @@ func GetPostByID_v2(ctx context.Context, driver neo4j.DriverWithContext, postID 
       author.user_id AS author_user_id,
       author.profile_picture AS author_profile_picture,
       COUNT(l) AS likes_count,
-      COUNT(v) AS views_count
+      COUNT(v) AS views_count,
+      CASE WHEN userLike IS NULL THEN false ELSE true END AS has_liked
   `
 
 	params := map[string]interface{}{
 		"post_id": postID,
+		"user_id": userID,
 	}
 
 	result, err := session.Run(ctx, query, params)
@@ -119,116 +122,6 @@ func GetPostByID_v2(ctx context.Context, driver neo4j.DriverWithContext, postID 
 	}
 
 	return record.AsMap(), nil
-}
-
-func GetPostByID(ctx context.Context, driver neo4j.DriverWithContext, postID string, logger *zap.Logger) (map[string]interface{}, error) {
-	session := driver.NewSession(ctx, neo4j.SessionConfig{
-		DatabaseName: "neo4j",
-		AccessMode:   neo4j.AccessModeRead,
-	})
-	defer session.Close(ctx)
-
-	query := `
-    MATCH (p:Post {post_id: $post_id})<-[:HAS_POST]-(author:UserProfile)
-    OPTIONAL MATCH (p)<-[l:LIKES]-(:UserProfile)
-    OPTIONAL MATCH (p)<-[c:COMMENTED_ON]-(comment:Comment)-[:COMMENTED_BY]->(commenter:UserProfile)
-    OPTIONAL MATCH (p)<-[v:HAS_VIEWED]-(viewer:UserProfile)
-    OPTIONAL MATCH (comment)<-[:REPLIES_TO]-(reply:Comment)-[:COMMENTED_BY]->(replier:UserProfile)
-    RETURN
-      p.post_id AS post_id,
-      p.title AS title,
-      p.content AS content,
-      p.post_type AS post_type,
-      p.media_urls AS media_urls,
-      p.start_date AS start_date,
-      p.end_date AS end_date,
-      p.created_timestamp AS created_timestamp,
-      author.first_name + " " + author.last_name AS author_name,
-      author.user_id AS author_user_id,
-      author.profile_picture AS author_profile_picture,
-      COUNT(l) AS likes_count,
-      COUNT(v) AS views_count,
-      COALESCE(COLLECT(DISTINCT {
-        comment_id: comment.comment_id,
-        content: comment.comment,
-        created_timestamp: comment.created_timestamp,
-        commenter_name: commenter.first_name + " " + commenter.last_name,
-        commenter_user_id: commenter.user_id,
-        commenter_profile_picture: commenter.profile_picture
-      }), []) AS comments,
-      COALESCE(COLLECT(DISTINCT {
-        parent_comment_id: comment.comment_id,
-        reply_id: reply.comment_id,
-        reply_content: reply.comment,
-        reply_timestamp: reply.created_timestamp,
-        replier_name: replier.first_name + " " + replier.last_name,
-        replier_user_id: replier.user_id,
-        replier_profile_picture: replier.profile_picture
-      }), []) AS replies
-  `
-
-	params := map[string]interface{}{
-		"post_id": postID,
-	}
-
-	result, err := session.Run(ctx, query, params)
-	if err != nil {
-		logger.Error("Failed to retrieve posts", zap.Error(err))
-		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to retrieve posts")
-	}
-
-	record, err := result.Single(ctx)
-	if err != nil {
-		logger.Error("Failed to collect results", zap.Error(err))
-		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to collect results")
-	}
-
-	postData := record.AsMap()
-
-	postData["comments"] = []map[string]interface{}{}
-	postData["replies"] = nil
-
-	repliesData, ok := record.Get("replies")
-	if !ok {
-		return nil, fiber.NewError(http.StatusInternalServerError, "Failed replies")
-	}
-	repliesMap := make(map[string][]map[string]interface{})
-	if repliesData != nil {
-		for _, r := range repliesData.([]interface{}) {
-			reply := r.(map[string]interface{})
-			if reply["reply_id"] == nil {
-				continue
-			}
-			parentID := reply["parent_comment_id"].(string)
-			replyInfo := map[string]interface{}{
-				"reply_id":                reply["reply_id"],
-				"reply_content":           reply["reply_content"],
-				"reply_timestamp":         reply["reply_timestamp"],
-				"replier_name":            reply["replier_name"],
-				"replier_user_id":         reply["replier_user_id"],
-				"replier_profile_picture": reply["replier_profile_picture"],
-			}
-			repliesMap[parentID] = append(repliesMap[parentID], replyInfo)
-		}
-	}
-
-	commentsData, ok := record.Get("comments")
-	if !ok {
-		return nil, fiber.NewError(http.StatusInternalServerError, "Failed comments")
-	}
-	if commentsData != nil {
-		for _, c := range commentsData.([]interface{}) {
-			comment := c.(map[string]interface{})
-			if comment["comment_id"] == nil {
-				continue
-			}
-			commentID := comment["comment_id"].(string)
-			comment["replies"] = repliesMap[commentID]
-			postData["comments"] = append(postData["comments"].([]map[string]interface{}), comment)
-		}
-	}
-
-	return postData, nil
 }
 
 func CreatePost(ctx context.Context, driver neo4j.DriverWithContext, userID string, post models.Post, logger *zap.Logger) (map[string]interface{}, error) {
@@ -420,7 +313,7 @@ func UnlikePost(ctx context.Context, driver neo4j.DriverWithContext, userID, pos
 	return nil
 }
 
-func GetCommentByPostID(ctx context.Context, driver neo4j.DriverWithContext, postID string, logger *zap.Logger) ([]models.Comment, error) {
+func GetCommentByPostID(ctx context.Context, driver neo4j.DriverWithContext, postID, userID string, logger *zap.Logger) ([]models.Comment, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeRead,
@@ -428,26 +321,34 @@ func GetCommentByPostID(ctx context.Context, driver neo4j.DriverWithContext, pos
 	defer session.Close(ctx)
 
 	query := `
-      MATCH (p:Post {post_id: $post_id})<-[:HAS_POST]-(:UserProfile)
-      MATCH (comment:Comment)-[:COMMENTED_ON]->(target)
-      WHERE target = p OR target:Comment
-      OPTIONAL MATCH (comment)-[:COMMENTED_BY]->(user:UserProfile)
-      RETURN
-          comment.comment_id AS comment_id,
-          comment.comment AS content,
-          comment.created_timestamp AS created_timestamp,
-          user.user_id AS user_id,
-          user.username AS username,
-          user.first_name + user.last_name AS name,
-          user.profile_picture AS profile_picture,
-          CASE
-              WHEN target:Post THEN null
-              ELSE target.comment_id
-          END AS parent_comment_id
-      ORDER BY created_timestamp
+    MATCH (p:Post {post_id: $post_id})<-[:HAS_POST]-(:UserProfile)
+    MATCH (comment:Comment)-[:COMMENTED_ON]->(target)
+    WHERE target = p OR target:Comment
+    OPTIONAL MATCH (comment)-[:COMMENTED_BY]->(user:UserProfile)
+    OPTIONAL MATCH (comment)<-[l:LIKES]-(:UserProfile)
+    OPTIONAL MATCH (comment)<-[userLike:LIKES]-(:UserProfile {user_id: $user_id})
+    RETURN
+        comment.comment_id AS comment_id,
+        comment.comment AS content,
+        comment.created_timestamp AS created_timestamp,
+        user.user_id AS user_id,
+        user.username AS username,
+        user.first_name + user.last_name AS name,
+        user.profile_picture AS profile_picture,
+        CASE
+            WHEN target:Post THEN null
+            ELSE target.comment_id
+        END AS parent_comment_id,
+        count(l) AS like_count,
+        CASE WHEN userLike IS NULL THEN false ELSE true END AS has_liked
+    ORDER BY created_timestamp
     `
 
-	params := map[string]any{"post_id": postID}
+	params := map[string]any{
+		"post_id": postID,
+		"user_id": userID,
+	}
+
 	result, err := session.Run(ctx, query, params)
 	if err != nil {
 		logger.Error("Comment query failed", zap.Error(err))
@@ -472,6 +373,8 @@ func GetCommentByPostID(ctx context.Context, driver neo4j.DriverWithContext, pos
 			Name:            utils.SafeString(record.Values[5]),
 			ProfilePicture:  utils.SafeString(record.Values[6]),
 			ParentCommentID: utils.OptionalString(record.Values[7]),
+			LikeCounts:      int64(record.Values[8].(int64)),
+			HasLike:         record.Values[9].(bool),
 		}
 		comments = append(comments, comment)
 	}

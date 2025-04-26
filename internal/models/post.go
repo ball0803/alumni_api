@@ -37,6 +37,8 @@ type Comment struct {
 	Name            string    `json:"name,omitempty"`
 	ProfilePicture  string    `json:"profile_picture,omitempty"`
 	ParentCommentID *string   `json:"parent_comment_id,omitempty"`
+	LikeCounts      int64     `json:"like_count"`
+	HasLike         bool      `json:"has_like"`
 	Replies         []Comment `json:"replies,omitempty"`
 }
 

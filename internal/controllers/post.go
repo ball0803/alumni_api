@@ -29,13 +29,15 @@ func GetAllPost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handle
 func GetPostByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		postID := c.Params("post_id")
+		userID := ""
 
 		if err := validators.UUID(postID); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		if tokenString, ok := auth.ExtractJWT(c); ok {
+		if tokenString, ok := auth.ExtractJWT_Cookie(c); ok {
 			if claims, err := auth.ParseJWT(tokenString); err == nil {
+				userID = claims.UserID
 				err = services.AddView(c.Context(), driver, claims.UserID, postID, logger)
 				if err != nil {
 					return HandleErrorWithStatus(c, err, logger)
@@ -48,7 +50,7 @@ func GetPostByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 		// 	return HandleErrorWithStatus(c, err, logger)
 		// }
 
-		posts, err := repositories.GetPostByID_v2(c.Context(), driver, postID, logger)
+		posts, err := repositories.GetPostByID(c.Context(), driver, postID, userID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -61,12 +63,19 @@ func GetPostByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 func GetCommentByPostID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		postID := c.Params("post_id")
+		userID := ""
 
 		if err := validators.UUID(postID); err != nil {
 			return HandleFailWithStatus(c, err, logger)
 		}
 
-		comment, err := repositories.GetCommentByPostID(c.Context(), driver, postID, logger)
+		if tokenString, ok := auth.ExtractJWT_Cookie(c); ok {
+			if claims, err := auth.ParseJWT(tokenString); err == nil {
+				userID = claims.UserID
+			}
+		}
+
+		comment, err := repositories.GetCommentByPostID(c.Context(), driver, postID, userID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -218,6 +227,15 @@ func CommentPost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 			return HandleFail(c, fiber.StatusUnauthorized, "Unauthorized claim", logger, nil)
 		}
 
+		exists, err := services.UserExist(c.Context(), driver, claim.UserID, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", claim.UserID), logger, nil)
+		}
+
 		var req models.CommentRequest
 
 		if err := validators.Request(c, &req); err != nil {
@@ -245,6 +263,15 @@ func ReplyComment(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Hand
 		claim, ok := c.Locals("claims").(*models.Claims)
 		if !ok {
 			return HandleFail(c, fiber.StatusUnauthorized, "Unauthorized claim", logger, nil)
+		}
+
+		exists, err := services.UserExist(c.Context(), driver, claim.UserID, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if !exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", claim.UserID), logger, nil)
 		}
 
 		var req models.CommentRequest
