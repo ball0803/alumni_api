@@ -496,6 +496,12 @@ func CommentPost(ctx context.Context, driver neo4j.DriverWithContext, userID, po
       comment: $comment,
       created_timestamp: timestamp()
     })-[:COMMENTED_ON]->(p)
+		RETURN
+			u.user_id AS user_id,
+			u.username AS username,
+			c.comment AS content,
+			c.comment_id AS comment_id,
+			c.created_timestamp AS created_timestamp
   `
 
 	params := map[string]interface{}{
@@ -505,16 +511,19 @@ func CommentPost(ctx context.Context, driver neo4j.DriverWithContext, userID, po
 		"comment":    comment,
 	}
 
-	_, err := session.Run(ctx, query, params)
+	result, err := session.Run(ctx, query, params)
 	if err != nil {
 		logger.Error("Failed to comment on post", zap.Error(err))
-		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to comment on post")
-	}
-	ret := map[string]interface{}{
-		"comment_id": commentID,
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to return comment")
 	}
 
-	return ret, nil
+	record, err := result.Single(ctx)
+	if err != nil {
+		logger.Error("Failed to collect results", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to collect results")
+	}
+
+	return record.AsMap(), nil
 }
 
 func ReplyComment(ctx context.Context, driver neo4j.DriverWithContext, userID, commentID, comment string, logger *zap.Logger) (map[string]interface{}, error) {
@@ -528,12 +537,18 @@ func ReplyComment(ctx context.Context, driver neo4j.DriverWithContext, userID, c
 
 	query := `
     MATCH (u:UserProfile {user_id: $user_id})
-    MATCH (c1:Comment {comment_id: $comment_id})
-    CREATE (u)<-[:COMMENTED_BY]-(c2:Comment {
+    MATCH (c:Comment {comment_id: $comment_id})
+    CREATE (u)<-[:COMMENTED_BY]-(r:Comment {
       comment_id: $reply_id,
       comment: $comment,
       created_timestamp: timestamp()
-    })-[:COMMENTED_ON]->(c1)
+    })-[:COMMENTED_ON]->(c)
+		RETURN
+			u.user_id AS user_id,
+			u.username AS username,
+			r.comment AS content,
+			r.comment_id AS comment_id,
+			r.created_timestamp AS created_timestamp
   `
 
 	params := map[string]interface{}{
@@ -543,16 +558,19 @@ func ReplyComment(ctx context.Context, driver neo4j.DriverWithContext, userID, c
 		"comment":    comment,
 	}
 
-	_, err := session.Run(ctx, query, params)
+	result, err := session.Run(ctx, query, params)
 	if err != nil {
-		logger.Error("Failed to reply on comment", zap.Error(err))
-		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to reply on comment")
-	}
-	ret := map[string]interface{}{
-		"comment_id": replyID,
+		logger.Error("Failed to comment on post", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to return comment")
 	}
 
-	return ret, nil
+	record, err := result.Single(ctx)
+	if err != nil {
+		logger.Error("Failed to collect results", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to collect results")
+	}
+
+	return record.AsMap(), nil
 }
 
 func UpdateCommentPost(ctx context.Context, driver neo4j.DriverWithContext, commentID, comment string, logger *zap.Logger) error {

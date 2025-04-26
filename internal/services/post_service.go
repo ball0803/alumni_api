@@ -3,7 +3,6 @@ package services
 import (
 	"alumni_api/internal/models"
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
