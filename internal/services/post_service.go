@@ -130,23 +130,64 @@ func BuildCommentTree(flat []models.Comment) []models.Comment {
 	idToComment := make(map[string]*models.Comment)
 	var roots []*models.Comment
 
+	// First pass: map all comments by ID
 	for i := range flat {
+		flat[i].Replies = []models.Comment{} // Initialize Replies slice
 		idToComment[flat[i].CommentID] = &flat[i]
 	}
 
+	// Second pass: assign replies properly
 	for i := range flat {
 		c := &flat[i]
 		if c.ParentCommentID == nil {
 			roots = append(roots, c)
 		} else if parent, ok := idToComment[*c.ParentCommentID]; ok {
 			c.ParentCommentID = nil
-			parent.Replies = append(parent.Replies, *c)
+			parent.Replies = append(parent.Replies, *c) // append copy temporarily
 		}
+	}
+
+	// Third pass: deep copy clean tree
+	var deepCopy func(c *models.Comment) models.Comment
+	deepCopy = func(c *models.Comment) models.Comment {
+		newComment := *c
+		newComment.Replies = []models.Comment{}
+		for i := range c.Replies {
+			originalChild := idToComment[c.Replies[i].CommentID]
+			newComment.Replies = append(newComment.Replies, deepCopy(originalChild))
+		}
+		return newComment
 	}
 
 	var result []models.Comment
 	for _, r := range roots {
-		result = append(result, *r)
+		result = append(result, deepCopy(r))
 	}
 	return result
 }
+
+// func BuildCommentTree(flat []models.Comment) []models.Comment {
+// 	idToComment := make(map[string]*models.Comment)
+// 	var roots []*models.Comment
+//
+// 	for i := range flat {
+// 		idToComment[flat[i].CommentID] = &flat[i]
+// 	}
+//
+// 	for i := range flat {
+// 		c := &flat[i]
+// 		if c.ParentCommentID == nil {
+// 			roots = append(roots, c)
+// 		} else if parent, ok := idToComment[*c.ParentCommentID]; ok {
+// 			c.ParentCommentID = nil
+// 			parent.Replies = append(parent.Replies, *c)
+// 		}
+// 	}
+//
+// 	var result []models.Comment
+// 	for _, r := range roots {
+// 		fmt.Println(*r)
+// 		result = append(result, *r)
+// 	}
+// 	return result
+// }
