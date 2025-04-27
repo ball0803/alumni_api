@@ -12,15 +12,6 @@ import (
 	"go.uber.org/zap"
 )
 
-func ExtractJWT(c *fiber.Ctx, logger *zap.Logger) (string, bool) {
-	authHeader := c.Get("Authorization")
-	if authHeader == "" {
-		return "", false
-	}
-
-	return authHeader[len("Bearer "):], true
-}
-
 func VerifyToken(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		claim, ok := c.Locals("claims").(*models.Claims)
@@ -107,6 +98,15 @@ func RegistryUser(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Hand
 
 		successMessage := "Registry Succesfully"
 		return HandleSuccess(c, fiber.StatusOK, successMessage, user, logger)
+	}
+}
+
+func Logout(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		c.ClearCookie("jwt")
+		successMessage := "Logout Succesfully"
+
+		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
 	}
 }
 
