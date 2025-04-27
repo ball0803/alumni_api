@@ -69,6 +69,7 @@ func Login(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 			// SameSite: "Strict",
 			Secure:   false,
 			SameSite: "None",
+			Path:     "/",                     // important: clear from root
 			MaxAge:   1 * 24 * 60 * 60 * 1000, // 1 day
 		})
 
@@ -80,6 +81,23 @@ func Login(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 
 		successMessage := "Login Succesfully"
 		return HandleSuccess(c, fiber.StatusOK, successMessage, ret, logger)
+	}
+}
+
+func Logout(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		c.Cookie(&fiber.Cookie{
+			Name:     "jwt",
+			Value:    "",
+			HTTPOnly: true,
+			Secure:   false,
+			SameSite: "None",
+			Path:     "/",
+			MaxAge:   -1,
+		})
+		successMessage := "Logout Succesfully"
+
+		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
 	}
 }
 
@@ -98,15 +116,6 @@ func RegistryUser(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Hand
 
 		successMessage := "Registry Succesfully"
 		return HandleSuccess(c, fiber.StatusOK, successMessage, user, logger)
-	}
-}
-
-func Logout(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		c.ClearCookie("jwt")
-		successMessage := "Logout Succesfully"
-
-		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
 	}
 }
 
