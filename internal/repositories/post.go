@@ -99,8 +99,8 @@ func GetPostByID(ctx context.Context, driver neo4j.DriverWithContext, postID, us
       author.first_name + " " + author.last_name AS author_name,
       author.user_id AS author_user_id,
       author.profile_picture AS author_profile_picture,
-      COUNT(l) AS likes_count,
-      COUNT(v) AS views_count,
+      SIZE(COLLECT(DISTINCT l)) AS likes_count,
+      SIZE(COLLECT(DISTINCT v)) AS views_count,
       CASE WHEN userLike IS NULL THEN false ELSE true END AS has_liked
   `
 
