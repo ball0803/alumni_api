@@ -319,7 +319,7 @@ func VerifyAccount(ctx context.Context, driver neo4j.DriverWithContext, user_id,
 	user := record.AsMap()
 
 	// Check if the user is already verified
-	if isVerify, ok := user["is_verify"].(bool); ok && isVerify {
+	if isVerify, ok := user["is_verify"].(bool); !ok && isVerify {
 		logger.Warn("User already verified", zap.String("user_id", user_id))
 		return nil, fmt.Errorf("user already verified")
 	}
@@ -332,13 +332,18 @@ func VerifyAccount(ctx context.Context, driver neo4j.DriverWithContext, user_id,
 
 	// Update the user to mark them as verified and clear the token
 	updateQuery := `
-        MATCH (u:UserProfile {user_id: $user_id})
-        REMOVE u.verification_token
-        SET u.is_verify = true
-				RETURN
-          u.username,
-          u.role
-    `
+    MATCH (u:UserProfile {user_id: $user_id})
+    REMOVE u.verification_token
+    SET u.is_verify = true
+    RETURN u.username, u.user_id, u.role
+
+    MATCH (dup:UserProfile)
+    WHERE dup.username = u.username AND dup.user_id <> u.user_id
+    DETACH DELETE dup
+
+    RETURN u.username, u.role
+  `
+
 	updateParams := map[string]interface{}{
 		"user_id": user_id,
 	}
