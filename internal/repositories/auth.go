@@ -288,7 +288,7 @@ func RegistryUser(ctx context.Context, driver neo4j.DriverWithContext, user mode
 	return ret, nil
 }
 
-func VerifyAccount(ctx context.Context, driver neo4j.DriverWithContext, user_id, token string, logger *zap.Logger) error {
+func VerifyAccount(ctx context.Context, driver neo4j.DriverWithContext, user_id, token string, logger *zap.Logger) (map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -307,13 +307,13 @@ func VerifyAccount(ctx context.Context, driver neo4j.DriverWithContext, user_id,
 	result, err := session.Run(ctx, query, params)
 	if err != nil {
 		logger.Error("Failed to query user", zap.Error(err))
-		return fmt.Errorf("error querying user: %w", err)
+		return nil, fmt.Errorf("error querying user: %w", err)
 	}
 
 	record, err := result.Single(ctx)
 	if err != nil {
 		logger.Warn("User not found", zap.String("user_id", user_id))
-		return fmt.Errorf("user not found: %w", err)
+		return nil, fmt.Errorf("user not found: %w", err)
 	}
 
 	user := record.AsMap()
@@ -321,13 +321,13 @@ func VerifyAccount(ctx context.Context, driver neo4j.DriverWithContext, user_id,
 	// Check if the user is already verified
 	if isVerify, ok := user["is_verify"].(bool); ok && isVerify {
 		logger.Warn("User already verified", zap.String("user_id", user_id))
-		return fmt.Errorf("user already verified")
+		return nil, fmt.Errorf("user already verified")
 	}
 
 	// Check if the verification token matches
 	if verificationToken, ok := user["verification_token"].(string); !ok || verificationToken != token {
 		logger.Warn("Incorrect verification token", zap.String("user_id", user_id))
-		return fmt.Errorf("incorrect verification token")
+		return nil, fmt.Errorf("incorrect verification token")
 	}
 
 	// Update the user to mark them as verified and clear the token
@@ -335,18 +335,25 @@ func VerifyAccount(ctx context.Context, driver neo4j.DriverWithContext, user_id,
         MATCH (u:UserProfile {user_id: $user_id})
         REMOVE u.verification_token
         SET u.is_verify = true
+				RETURN u.username, u.role
     `
 	updateParams := map[string]interface{}{
 		"user_id": user_id,
 	}
 
-	_, err = session.Run(ctx, updateQuery, updateParams)
+	result, err = session.Run(ctx, updateQuery, updateParams)
 	if err != nil {
 		logger.Error("Failed to update user", zap.Error(err))
-		return fmt.Errorf("error updating user: %w", err)
+		return nil, fmt.Errorf("error updating user: %w", err)
 	}
 
-	return nil
+	record, err = result.Single(ctx)
+	if err != nil {
+		logger.Warn("User not found", zap.String("user_id", user_id))
+		return nil, fmt.Errorf("user not found: %w", err)
+	}
+
+	return record.AsMap(), nil
 }
 
 func RequestChangePassword(ctx context.Context, driver neo4j.DriverWithContext, user_id string, logger *zap.Logger) error {

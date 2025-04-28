@@ -37,17 +37,17 @@ func Login(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 			return HandleFail(c, fiber.StatusBadRequest, "Validation failed", logger, err)
 		}
 
-		user, err := repositories.Login(c.Context(), driver, req.Username, logger)
-		if err != nil {
-			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
-		}
-
-		ok, err := services.UserVerify(c.Context(), driver, user.UserID, logger)
+		ok, err := services.UsernameVerify(c.Context(), driver, req.Username, logger)
 		if err != nil {
 			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, err)
 		}
 		if !ok {
 			return HandleError(c, fiber.StatusUnauthorized, "User Is Not Verify", logger, err)
+		}
+
+		user, err := repositories.Login(c.Context(), driver, req.Username, logger)
+		if err != nil {
+			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}
 
 		err = auth.CheckPasswordHash(req.Password, user.Password)
@@ -160,12 +160,35 @@ func VerifyAccount(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Han
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", claim.UserID), logger, nil)
 		}
 
-		err = repositories.VerifyAccount(c.Context(), driver, claim.UserID, claim.VerificationToken, logger)
+		data, err := repositories.VerifyAccount(c.Context(), driver, claim.UserID, claim.VerificationToken, logger)
 		if err != nil {
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}
 
-		return c.Redirect("https://alumni.cpe.kmutt.ac.th/login", fiber.StatusFound)
+		user, err := repositories.Login(c.Context(), driver, data["username"], logger)
+		if err != nil {
+			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
+		}
+
+		token, err := auth.GenerateJWT(user.UserID, user.Role, int(user.AdmitYear))
+		if err != nil {
+			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
+		}
+
+		c.Cookie(&fiber.Cookie{
+			Name:     "jwt",
+			Value:    token,
+			HTTPOnly: true,
+			// TODO: Turn back to strict when frontend in production
+			// Secure:   true, // Enable in production (HTTPS only)
+			// SameSite: "Strict",
+			Secure:   false,
+			SameSite: "None",
+			Path:     "/",
+			MaxAge:   1 * 24 * 60 * 60 * 1000,
+		})
+
+		return c.Redirect("https://alumni.cpe.kmutt.ac.th/registry", fiber.StatusFound)
 	}
 }
 
