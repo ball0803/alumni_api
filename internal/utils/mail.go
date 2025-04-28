@@ -44,37 +44,37 @@ func sendEmailHTML(toEmail, subject, html string) error {
 	}
 	defer conn.Close()
 
-	// 3. Create an SMTP client
-	client, err := smtp.NewClient(conn, smtpHost)
+	// 3. Create an SMTP host
+	host, err := smtp.NewClient(conn, smtpHost)
 	if err != nil {
-		return fmt.Errorf("failed to create client: %v", err)
+		return fmt.Errorf("failed to create host: %v", err)
 	}
-	defer client.Close()
+	defer host.Close()
 
 	// 4. Enable STARTTLS with custom TLS config
 	tlsConfig := &tls.Config{
 		ServerName: smtpHost, // Verify the server's certificate
 		// InsecureSkipVerify: true, // ⚠️ Uncomment ONLY for testing (disable cert verification)
 	}
-	if err = client.StartTLS(tlsConfig); err != nil {
+	if err = host.StartTLS(tlsConfig); err != nil {
 		return fmt.Errorf("STARTTLS failed: %v", err)
 	}
 
 	// 5. Authenticate
 	auth := smtp.PlainAuth("", fromEmail, password, smtpHost)
-	if err = client.Auth(auth); err != nil {
+	if err = host.Auth(auth); err != nil {
 		return fmt.Errorf("auth failed: %v", err)
 	}
 
 	// 6. Send the email
-	if err = client.Mail(fromEmail); err != nil {
+	if err = host.Mail(fromEmail); err != nil {
 		return fmt.Errorf("mail failed: %v", err)
 	}
-	if err = client.Rcpt(toEmail); err != nil {
+	if err = host.Rcpt(toEmail); err != nil {
 		return fmt.Errorf("rcpt failed: %v", err)
 	}
 
-	w, err := client.Data()
+	w, err := host.Data()
 	if err != nil {
 		return fmt.Errorf("data failed: %v", err)
 	}
@@ -112,15 +112,16 @@ func sendEmailSendGrid(toEmail, subject, body string) error {
 	from := mail.NewEmail("CPE Alumni", "phurin.reongsang@gmail.com")
 	to := mail.NewEmail("", toEmail)
 	message := mail.NewSingleEmail(from, subject, to, body, body)
-	client := sendgrid.NewSendClient(config.GetEnv("SENDGUN_API_KEY", ""))
+	host := sendgrid.NewSendClient(config.GetEnv("SENDGUN_API_KEY", ""))
 
-	_, err := client.Send(message)
+	_, err := host.Send(message)
 	return err
 }
 
 func SendOneTimeRegistryEmailSucc(email, token, ref string) error {
 	subject := "Alumni One Time Registration"
-	body := fmt.Sprintf(mail_format.OneTimeRegistrySucc, token, ref)
+	host := config.GetEnv("HOST", "")
+	body := fmt.Sprintf(mail_format.OneTimeRegistrySucc, host, token, ref)
 	if err := sendEmailHTML(email, subject, body); err != nil {
 		return err
 	}
@@ -138,7 +139,8 @@ func SendOneTimeRegistryEmailFail(email, ref string) error {
 
 func SendVerificationEmail(email, token, ref string) error {
 	subject := "Alumni Verification"
-	body := fmt.Sprintf(mail_format.VerifyMail, token, ref)
+	host := config.GetEnv("HOST", "")
+	body := fmt.Sprintf(mail_format.VerifyMail, host, token, ref)
 	if err := sendEmailHTML(email, subject, body); err != nil {
 		return err
 	}
@@ -147,7 +149,8 @@ func SendVerificationEmail(email, token, ref string) error {
 
 func SendVerificationChangeEmail(email, token string) error {
 	subject := "Alumni Verification"
-	body := fmt.Sprintf(mail_format.VerifyChangeMail, token)
+	host := config.GetEnv("HOST", "")
+	body := fmt.Sprintf(mail_format.VerifyChangeMail, host, token)
 	if err := sendEmailHTML(email, subject, body); err != nil {
 		return err
 	}
@@ -156,7 +159,8 @@ func SendVerificationChangeEmail(email, token string) error {
 
 func SendResetMail(email, token string) error {
 	subject := "Alumni Password Reset"
-	body := fmt.Sprintf(mail_format.ResetPasswordMail, token)
+	host := config.GetEnv("HOST", "")
+	body := fmt.Sprintf(mail_format.ResetPasswordMail, host, token)
 	if err := sendEmailHTML(email, subject, body); err != nil {
 		return err
 	}

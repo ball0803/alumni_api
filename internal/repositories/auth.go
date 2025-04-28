@@ -335,7 +335,9 @@ func VerifyAccount(ctx context.Context, driver neo4j.DriverWithContext, user_id,
         MATCH (u:UserProfile {user_id: $user_id})
         REMOVE u.verification_token
         SET u.is_verify = true
-				RETURN u.username, u.role
+				RETURN
+          u.username,
+          u.role
     `
 	updateParams := map[string]interface{}{
 		"user_id": user_id,

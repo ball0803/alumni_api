@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"alumni_api/config"
 	"alumni_api/internal/auth"
 	"alumni_api/internal/models"
 	"alumni_api/internal/repositories"
@@ -69,8 +70,8 @@ func Login(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 			// SameSite: "Strict",
 			Secure:   false,
 			SameSite: "None",
-			Path:     "/",                     // important: clear from root
-			MaxAge:   1 * 24 * 60 * 60 * 1000, // 1 day
+			Path:     "/",
+			MaxAge:   24 * 60 * 60,
 		})
 
 		ret := map[string]interface{}{
@@ -144,9 +145,10 @@ func RegistryAlumnus(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.H
 
 func VerifyAccount(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		token := c.Query("token")
+		verifyToken := c.Query("token")
+		host := config.GetEnv("HOST", "")
 
-		claim, err := auth.ParseVerification(token)
+		claim, err := auth.ParseVerification(verifyToken)
 		if err != nil {
 			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
 		}
@@ -165,19 +167,21 @@ func VerifyAccount(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Han
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}
 
-		user, err := repositories.Login(c.Context(), driver, data["username"], logger)
+		Username, _ := data["username"]
+
+		user, err := repositories.Login(c.Context(), driver, Username.(string), logger)
 		if err != nil {
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}
 
-		token, err := auth.GenerateJWT(user.UserID, user.Role, int(user.AdmitYear))
+		JWT, err := auth.GenerateJWT(user.UserID, user.Role, int(user.AdmitYear))
 		if err != nil {
 			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
 		}
 
 		c.Cookie(&fiber.Cookie{
 			Name:     "jwt",
-			Value:    token,
+			Value:    JWT,
 			HTTPOnly: true,
 			// TODO: Turn back to strict when frontend in production
 			// Secure:   true, // Enable in production (HTTPS only)
@@ -185,10 +189,10 @@ func VerifyAccount(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Han
 			Secure:   false,
 			SameSite: "None",
 			Path:     "/",
-			MaxAge:   1 * 24 * 60 * 60 * 1000,
+			MaxAge:   24 * 60 * 60,
 		})
 
-		return c.Redirect("https://alumni.cpe.kmutt.ac.th/registry", fiber.StatusFound)
+		return c.Redirect(fmt.Sprintf("%s/registry", host), fiber.StatusFound)
 	}
 }
 
@@ -285,6 +289,7 @@ func RequestChangeEmail(driver neo4j.DriverWithContext, logger *zap.Logger) fibe
 func VerifyEmail(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		token := c.Query("token")
+		host := config.GetEnv("HOST", "")
 
 		claim, err := auth.ParseVerification(token)
 		if err != nil {
@@ -305,7 +310,7 @@ func VerifyEmail(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}
 
-		return c.Redirect("https://alumni.cpe.kmutt.ac.th/homeuser", fiber.StatusFound)
+		return c.Redirect(fmt.Sprintf("%s/homeuser", host), fiber.StatusFound)
 	}
 }
 

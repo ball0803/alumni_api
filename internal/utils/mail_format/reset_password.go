@@ -70,11 +70,8 @@ const ResetPasswordMail = `
               
               <p>Hi [name],</p>
               <p>You recently requested to reset the password for your [CPE Alumni] account. Click the button below to proceed.</p>
-              
-              <a href="https://alumni.cpe.kmutt.ac.th/reset_password?token=%s" class="button">Reset Password</a>
-              
+              <a href="%s/reset_password?token=%s" class="button">Reset Password</a>
               <p class="help-text">If you did not request a password reset, please ignore this email or reply to let us know. This password reset link is only valid for the next 30 minutes.</p>
-              
               <p>Thanks,<br>the CPE Alumni team</p>
           </div>
           <div class="footer">
