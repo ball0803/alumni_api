@@ -95,6 +95,21 @@ func RegistryAlumnus(ctx context.Context, driver neo4j.DriverWithContext, user m
 	}
 
 	// Hash the password
+	hashedPass, err := auth.HashPassword(user.Password)
+	if err != nil {
+		logger.Error("Failed to hash password", zap.Error(err))
+		return fmt.Errorf("error hashing password: %w", err)
+	}
+
+	record, err := checkResult.Single(ctx)
+	if err != nil {
+		logger.Error("Failed to collect query results", zap.Error(err))
+		return fiber.NewError(fiber.StatusInternalServerError, "Error retrieving data")
+	}
+
+	usernameExist, _ := record.Get("usernameExist")
+	if usernameExist.(bool) {
+		logger.Error("User already used", zap.Error(err))
 		return fiber.NewError(fiber.StatusInternalServerError, "User already exist")
 	}
 
@@ -267,7 +282,7 @@ func RegistryUser(ctx context.Context, driver neo4j.DriverWithContext, user mode
 	}
 
 	ret := map[string]interface{}{
-		"user_id": createdUserID,
+		"user_id":          createdUserID,
 		"reference_number": ref,
 	}
 	return ret, nil
