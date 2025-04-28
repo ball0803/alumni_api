@@ -120,7 +120,7 @@ func sendEmailSendGrid(toEmail, subject, body string) error {
 
 func SendOneTimeRegistryEmailSucc(email, token, ref string) error {
 	subject := "Alumni One Time Registration"
-	host := config.GetEnv("HOST", "")
+	host := config.GetEnv("CLIENT", "")
 	body := fmt.Sprintf(mail_format.OneTimeRegistrySucc, host, token, ref)
 	if err := sendEmailHTML(email, subject, body); err != nil {
 		return err
@@ -139,7 +139,7 @@ func SendOneTimeRegistryEmailFail(email, ref string) error {
 
 func SendVerificationEmail(email, token, ref string) error {
 	subject := "Alumni Verification"
-	host := config.GetEnv("HOST", "")
+	host := config.GetEnv("SERVER", "")
 	body := fmt.Sprintf(mail_format.VerifyMail, host, token, ref)
 	if err := sendEmailHTML(email, subject, body); err != nil {
 		return err
@@ -149,7 +149,7 @@ func SendVerificationEmail(email, token, ref string) error {
 
 func SendVerificationChangeEmail(email, token string) error {
 	subject := "Alumni Verification"
-	host := config.GetEnv("HOST", "")
+	host := config.GetEnv("CLIENT", "")
 	body := fmt.Sprintf(mail_format.VerifyChangeMail, host, token)
 	if err := sendEmailHTML(email, subject, body); err != nil {
 		return err
@@ -159,7 +159,7 @@ func SendVerificationChangeEmail(email, token string) error {
 
 func SendResetMail(email, token string) error {
 	subject := "Alumni Password Reset"
-	host := config.GetEnv("HOST", "")
+	host := config.GetEnv("CLIENT", "")
 	body := fmt.Sprintf(mail_format.ResetPasswordMail, host, token)
 	if err := sendEmailHTML(email, subject, body); err != nil {
 		return err

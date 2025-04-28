@@ -99,6 +99,8 @@ services:
       - AES_ENCRYPTION_KEY=${AES_ENCRYPTION_KEY}
       - SENDER_GMAIL=${SENDER_GMAIL}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - CLIENT=${CLIENT}
+      - SERVER=${SERVER}
       - PORT=${PORT}
       - ENV=${ENV}
     healthcheck:
