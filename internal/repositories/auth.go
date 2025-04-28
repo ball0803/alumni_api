@@ -297,9 +297,13 @@ func VerifyAccount(ctx context.Context, driver neo4j.DriverWithContext, user_id,
 
 	// Query to fetch user details
 	query := `
-        MATCH (u:UserProfile {user_id: $user_id})
-        RETURN u.is_verify AS is_verify, u.verification_token AS verification_token
-    `
+		MATCH (u:UserProfile {user_id: $user_id})
+		RETURN 
+			u.is_verify AS is_verify,
+			u.verification_token AS verification_token,
+			u.username AS username,
+			u.role AS role
+	`
 	params := map[string]interface{}{
 		"user_id": user_id,
 	}
@@ -332,35 +336,32 @@ func VerifyAccount(ctx context.Context, driver neo4j.DriverWithContext, user_id,
 
 	// Update the user to mark them as verified and clear the token
 	updateQuery := `
-    MATCH (u:UserProfile {user_id: $user_id})
-    REMOVE u.verification_token
-    SET u.is_verify = true
-    RETURN u.username, u.user_id, u.role
+		MATCH (u:UserProfile {user_id: $user_id})
+		REMOVE u.verification_token
+		SET u.is_verify = true
+		WITH u
 
-    MATCH (dup:UserProfile)
-    WHERE dup.username = u.username AND dup.user_id <> u.user_id
-    DETACH DELETE dup
-
-    RETURN u.username, u.role
+		MATCH (dup:UserProfile)
+		WHERE dup.username = u.username AND dup.user_id <> u.user_id
+		DETACH DELETE dup
   `
 
 	updateParams := map[string]interface{}{
 		"user_id": user_id,
 	}
 
-	result, err = session.Run(ctx, updateQuery, updateParams)
+	_, err = session.Run(ctx, updateQuery, updateParams)
 	if err != nil {
 		logger.Error("Failed to update user", zap.Error(err))
 		return nil, fmt.Errorf("error updating user: %w", err)
 	}
 
-	record, err = result.Single(ctx)
-	if err != nil {
-		logger.Warn("User not found", zap.String("user_id", user_id))
-		return nil, fmt.Errorf("user not found: %w", err)
+	ret := map[string]interface{}{
+		"username": record.Values[2].(string),
+		"role": record.Values[2].(string),
 	}
 
-	return record.AsMap(), nil
+	return ret, nil
 }
 
 func RequestChangePassword(ctx context.Context, driver neo4j.DriverWithContext, user_id string, logger *zap.Logger) error {

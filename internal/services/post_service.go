@@ -163,31 +163,9 @@ func BuildCommentTree(flat []models.Comment) []models.Comment {
 	for _, r := range roots {
 		result = append(result, deepCopy(r))
 	}
+
+	if result == nil {
+		result = []models.Comment{}
+	}
 	return result
 }
-
-// func BuildCommentTree(flat []models.Comment) []models.Comment {
-// 	idToComment := make(map[string]*models.Comment)
-// 	var roots []*models.Comment
-//
-// 	for i := range flat {
-// 		idToComment[flat[i].CommentID] = &flat[i]
-// 	}
-//
-// 	for i := range flat {
-// 		c := &flat[i]
-// 		if c.ParentCommentID == nil {
-// 			roots = append(roots, c)
-// 		} else if parent, ok := idToComment[*c.ParentCommentID]; ok {
-// 			c.ParentCommentID = nil
-// 			parent.Replies = append(parent.Replies, *c)
-// 		}
-// 	}
-//
-// 	var result []models.Comment
-// 	for _, r := range roots {
-// 		fmt.Println(*r)
-// 		result = append(result, *r)
-// 	}
-// 	return result
-// }

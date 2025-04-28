@@ -80,7 +80,7 @@ const VerifyMail = `
                 <h2 style="color: #1e88e5; text-align: center;">Verify Your Email Address</h2>
                 <p>Hello,</p>
                 <p>Thank you for signing up. Use the verification click verify button below to complete your registration:</p>
-                <a href="%s/auth/verify-account?token=%s" class="button">Verify Email</a>
+                <a href="%s/registry?token=%s" class="button">Verify Email</a>
 								<h3 style="color: #1e88e5; text-align: center;">Ref: %s</h3>
                 <p class="help-text">If you didn't register CPE Alumni account, you can safely ignore this email.</p>
             </div>

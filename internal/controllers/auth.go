@@ -146,7 +146,7 @@ func RegistryAlumnus(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.H
 func VerifyAccount(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		verifyToken := c.Query("token")
-		host := config.GetEnv("HOST", "")
+		// client := config.GetEnv("CLIENT", "")
 
 		claim, err := auth.ParseVerification(verifyToken)
 		if err != nil {
@@ -192,7 +192,15 @@ func VerifyAccount(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Han
 			MaxAge:   24 * 60 * 60,
 		})
 
-		return c.Redirect(fmt.Sprintf("%s/registry", host), fiber.StatusFound)
+		ret := map[string]interface{}{
+			"token":     JWT,
+			"user_id":   user.UserID,
+			"user_role": user.Role,
+		}
+
+		successMessage := "Login Succesfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, ret, logger)
+		// return c.Redirect(fmt.Sprintf("%s/registry", client), fiber.StatusFound)
 	}
 }
 
@@ -289,7 +297,7 @@ func RequestChangeEmail(driver neo4j.DriverWithContext, logger *zap.Logger) fibe
 func VerifyEmail(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		token := c.Query("token")
-		host := config.GetEnv("HOST", "")
+		client := config.GetEnv("CLIENT", "")
 
 		claim, err := auth.ParseVerification(token)
 		if err != nil {
@@ -310,7 +318,7 @@ func VerifyEmail(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}
 
-		return c.Redirect(fmt.Sprintf("%s/homeuser", host), fiber.StatusFound)
+		return c.Redirect(fmt.Sprintf("%s/homeuser", client), fiber.StatusFound)
 	}
 }
 

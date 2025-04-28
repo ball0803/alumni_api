@@ -139,7 +139,7 @@ func SendOneTimeRegistryEmailFail(email, ref string) error {
 
 func SendVerificationEmail(email, token, ref string) error {
 	subject := "Alumni Verification"
-	host := config.GetEnv("SERVER", "")
+	host := config.GetEnv("CLIENT", "")
 	body := fmt.Sprintf(mail_format.VerifyMail, host, token, ref)
 	if err := sendEmailHTML(email, subject, body); err != nil {
 		return err
