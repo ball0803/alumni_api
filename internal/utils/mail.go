@@ -136,9 +136,9 @@ func SendOneTimeRegistryEmailFail(email, ref string) error {
 	return nil
 }
 
-func SendVerificationEmail(email, token string) error {
+func SendVerificationEmail(email, token, ref string) error {
 	subject := "Alumni Verification"
-	body := fmt.Sprintf(mail_format.VerifyMail, token)
+	body := fmt.Sprintf(mail_format.VerifyMail, token, ref)
 	if err := sendEmailHTML(email, subject, body); err != nil {
 		return err
 	}

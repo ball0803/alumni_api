@@ -95,33 +95,18 @@ func RegistryAlumnus(ctx context.Context, driver neo4j.DriverWithContext, user m
 	}
 
 	// Hash the password
-	hashedPass, err := auth.HashPassword(user.Password)
-	if err != nil {
-		logger.Error("Failed to hash password", zap.Error(err))
-		return fmt.Errorf("error hashing password: %w", err)
-	}
-
-	record, err := checkResult.Single(ctx)
-	if err != nil {
-		logger.Error("Failed to collect query results", zap.Error(err))
-		return fiber.NewError(fiber.StatusInternalServerError, "Error retrieving data")
-	}
-
-	usernameExist, _ := record.Get("usernameExist")
-	if usernameExist.(bool) {
-		logger.Error("User already used", zap.Error(err))
 		return fiber.NewError(fiber.StatusInternalServerError, "User already exist")
 	}
 
 	// Update the existing user with the new password and verification token
 	updateQuery := `
-  MATCH (u:UserProfile {email: $email})
-  SET
-    u.username = $username,
-    u.user_password = $password,
-    u.is_verify = true,
-    u.role = $role
-  RETURN u.user_id AS user_id
+		MATCH (u:UserProfile {email: $email})
+		SET
+			u.username = $username,
+			u.user_password = $password,
+			u.is_verify = true,
+			u.role = $role
+		RETURN u.user_id AS user_id
   `
 
 	updateParams := map[string]interface{}{
@@ -144,130 +129,6 @@ func RegistryAlumnus(ctx context.Context, driver neo4j.DriverWithContext, user m
 	}
 
 	return nil
-}
-
-func RegistryAlumnus_Old(ctx context.Context, driver neo4j.DriverWithContext, user models.RegistryRequest, logger *zap.Logger) (map[string]interface{}, error) {
-	session := driver.NewSession(ctx, neo4j.SessionConfig{
-		DatabaseName: "neo4j",
-		AccessMode:   neo4j.AccessModeWrite,
-	})
-	defer session.Close(ctx)
-
-	// Start a transaction
-	tx, err := session.BeginTransaction(ctx)
-	if err != nil {
-		logger.Error("Failed to start transaction", zap.Error(err))
-		return nil, fmt.Errorf("error starting transaction: %w", err)
-	}
-
-	// Defer a function to handle transaction rollback in case of failure
-	defer func() {
-		if err != nil {
-			logger.Info("Rolling back transaction due to error", zap.Error(err))
-			if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
-				logger.Error("Failed to rollback transaction", zap.Error(rollbackErr))
-			}
-		}
-	}()
-
-	// Check if the username already exists
-	checkQuery := `
-    OPTIONAL MATCH (u1:UserProfile {username: $username, is_verify: true})
-    OPTIONAL MATCH (u2:UserProfile {email: $email, is_verify: true})
-    RETURN 
-      u1 IS NOT NULL AS usernameExist,
-      u2 IS NOT NULL AS emailExist,
-      u2.user_id AS user_id
-  `
-	checkParams := map[string]interface{}{
-		"username": user.Username,
-		"email":    user.Email,
-	}
-	checkResult, err := tx.Run(ctx, checkQuery, checkParams)
-	if err != nil {
-		logger.Error("Failed to check username uniqueness", zap.Error(err))
-		return nil, fmt.Errorf("error checking username uniqueness: %w", err)
-	}
-
-	// Hash the password
-	hashedPass, err := auth.HashPassword(user.Password)
-	if err != nil {
-		logger.Error("Failed to hash password", zap.Error(err))
-		return nil, fmt.Errorf("error hashing password: %w", err)
-	}
-
-	// Generate a verification token
-	token := auth.GenerateVerificationToken()
-
-	record, err := checkResult.Single(ctx)
-	if err != nil {
-		logger.Error("Failed to collect query results", zap.Error(err))
-		return nil, fiber.NewError(fiber.StatusInternalServerError, "Error retrieving data")
-	}
-
-	usernameExist, _ := record.Get("usernameExist")
-	if usernameExist.(bool) {
-		logger.Error("User already used", zap.Error(err))
-		return nil, fiber.NewError(fiber.StatusInternalServerError, "User already exist")
-	}
-
-	emailExist, _ := record.Get("emailExist")
-	if !emailExist.(bool) {
-		logger.Error("This email not exist in database", zap.Error(err))
-		return nil, fiber.NewError(fiber.StatusInternalServerError, "This email not exist in database")
-	}
-
-	userID, _ := record.Get("user_id")
-	jwtToken, err := auth.GenerateVerificationJWT(userID.(string), token)
-	if err != nil {
-		logger.Error("Failed to create verify jwt", zap.Error(err))
-		return nil, fmt.Errorf("failed to create verify jwt: %w", err)
-	}
-
-	// Update the existing user with the new password and verification token
-	updateQuery := `
-  MATCH (u:UserProfile {user_id: $user_id})
-  SET
-    u.username = $username,
-    u.user_password = $password,
-    u.verification_token = $token,
-    u.role = $role
-  `
-
-	updateParams := map[string]interface{}{
-		"user_id":  userID,
-		"username": user.Username,
-		"password": hashedPass,
-		"token":    token,
-		"role":     "alumnus",
-	}
-
-	_, err = tx.Run(ctx, updateQuery, updateParams)
-	if err != nil {
-		logger.Error("Failed to update user", zap.Error(err))
-		return nil, fmt.Errorf("error updating user: %w", err)
-	}
-
-	// Send verification email
-	if err = utils.SendVerificationEmail(user.Email, jwtToken); err != nil {
-		logger.Error("Failed to send verification email", zap.Error(err))
-		// Rollback the transaction if email sending fails
-		if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
-			logger.Error("Failed to rollback transaction", zap.Error(rollbackErr))
-		}
-		return nil, fmt.Errorf("error sending verification email: %w", err)
-	}
-
-	// Commit the transaction after sending the email
-	if err = tx.Commit(ctx); err != nil {
-		logger.Error("Failed to commit transaction", zap.Error(err))
-		return nil, fmt.Errorf("error committing transaction: %w", err)
-	}
-
-	ret := map[string]interface{}{
-		"user_id": userID,
-	}
-	return ret, nil
 }
 
 func RegistryUser(ctx context.Context, driver neo4j.DriverWithContext, user models.RegistryRequest, logger *zap.Logger) (map[string]interface{}, error) {
@@ -393,8 +254,10 @@ func RegistryUser(ctx context.Context, driver neo4j.DriverWithContext, user mode
 		return nil, fmt.Errorf("error committing transaction: %w", err)
 	}
 
+	ref := auth.GenerateRefNum()
+
 	// Send verification email
-	if err = utils.SendVerificationEmail(user.Email, jwtToken); err != nil {
+	if err = utils.SendVerificationEmail(user.Email, jwtToken, ref); err != nil {
 		logger.Error("Failed to send verification email", zap.Error(err))
 		// Rollback the transaction if email sending fails
 		if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
@@ -405,6 +268,7 @@ func RegistryUser(ctx context.Context, driver neo4j.DriverWithContext, user mode
 
 	ret := map[string]interface{}{
 		"user_id": createdUserID,
+		"reference_number": ref,
 	}
 	return ret, nil
 }
