@@ -50,7 +50,7 @@ func Login(ctx context.Context, driver neo4j.DriverWithContext, username string,
 	return res, nil
 }
 
-func RegistryAlumnus(ctx context.Context, driver neo4j.DriverWithContext, user models.RegistryOneTimeRequest, email string, logger *zap.Logger) error {
+func RegistryAlumnus(ctx context.Context, driver neo4j.DriverWithContext, user models.RegistryOneTimeRequest, email string, logger *zap.Logger) (map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -65,7 +65,7 @@ func RegistryAlumnus(ctx context.Context, driver neo4j.DriverWithContext, user m
 	tx, err := session.BeginTransaction(ctx)
 	if err != nil {
 		logger.Error("Failed to start transaction", zap.Error(err))
-		return fmt.Errorf("error starting transaction: %w", err)
+		return nil, fmt.Errorf("error starting transaction: %w", err)
 	}
 
 	// Defer a function to handle transaction rollback in case of failure
@@ -91,26 +91,26 @@ func RegistryAlumnus(ctx context.Context, driver neo4j.DriverWithContext, user m
 	checkResult, err := tx.Run(ctx, checkQuery, checkParams)
 	if err != nil {
 		logger.Error("Failed to check username uniqueness", zap.Error(err))
-		return fmt.Errorf("error checking username uniqueness: %w", err)
+		return nil, fmt.Errorf("error checking username uniqueness: %w", err)
 	}
 
 	// Hash the password
 	hashedPass, err := auth.HashPassword(user.Password)
 	if err != nil {
 		logger.Error("Failed to hash password", zap.Error(err))
-		return fmt.Errorf("error hashing password: %w", err)
+		return nil, fmt.Errorf("error hashing password: %w", err)
 	}
 
 	record, err := checkResult.Single(ctx)
 	if err != nil {
 		logger.Error("Failed to collect query results", zap.Error(err))
-		return fiber.NewError(fiber.StatusInternalServerError, "Error retrieving data")
+		return nil, fiber.NewError(fiber.StatusInternalServerError, "Error retrieving data")
 	}
 
 	usernameExist, _ := record.Get("usernameExist")
 	if usernameExist.(bool) {
 		logger.Error("User already used", zap.Error(err))
-		return fiber.NewError(fiber.StatusInternalServerError, "User already exist")
+		return nil, fiber.NewError(fiber.StatusInternalServerError, "User already exist")
 	}
 
 	// Update the existing user with the new password and verification token
@@ -121,7 +121,8 @@ func RegistryAlumnus(ctx context.Context, driver neo4j.DriverWithContext, user m
 			u.user_password = $password,
 			u.is_verify = true,
 			u.role = $role
-		RETURN u.user_id AS user_id
+		RETURN
+			u.user_id AS user_id
   `
 
 	updateParams := map[string]interface{}{
@@ -131,19 +132,29 @@ func RegistryAlumnus(ctx context.Context, driver neo4j.DriverWithContext, user m
 		"role":     "alumnus",
 	}
 
-	_, err = tx.Run(ctx, updateQuery, updateParams)
+	result, err := tx.Run(ctx, updateQuery, updateParams)
 	if err != nil {
 		logger.Error("Failed to update user", zap.Error(err))
-		return fmt.Errorf("error updating user: %w", err)
+		return nil, fmt.Errorf("error updating user: %w", err)
+	}
+
+	record, err = result.Single(ctx)
+	if err != nil {
+		logger.Error("Failed to collect query results", zap.Error(err))
+		return nil, fiber.NewError(fiber.StatusInternalServerError, "Error retrieving data")
 	}
 
 	// Commit the transaction after sending the email
 	if err = tx.Commit(ctx); err != nil {
 		logger.Error("Failed to commit transaction", zap.Error(err))
-		return fmt.Errorf("error committing transaction: %w", err)
+		return nil, fmt.Errorf("error committing transaction: %w", err)
 	}
 
-	return nil
+	ret := map[string]interface{}{
+		"user_id": record.Values[0].(string),
+	}
+
+	return ret, nil
 }
 
 func RegistryUser(ctx context.Context, driver neo4j.DriverWithContext, user models.RegistryRequest, logger *zap.Logger) (map[string]interface{}, error) {

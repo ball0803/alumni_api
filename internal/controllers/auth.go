@@ -133,10 +133,30 @@ func RegistryAlumnus(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.H
 			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
 		}
 
-		err = repositories.RegistryAlumnus(c.Context(), driver, req, claim.Email, logger)
+		user, err := repositories.RegistryAlumnus(c.Context(), driver, req, claim.Email, logger)
 		if err != nil {
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}
+		user_id, _ := user["user_id"]
+
+		token, err := auth.GenerateJWT(user_id.(string), "alumnus", 0)
+		if err != nil {
+			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
+		}
+
+		c.Cookie(&fiber.Cookie{
+			Name:     "jwt",
+			Value:    token,
+			HTTPOnly: true,
+			// TODO: Turn back to strict when frontend in production
+			// Secure:   true, // Enable in production (HTTPS only)
+			// SameSite: "Strict",
+			Secure:   false,
+			SameSite: "None",
+			Path:     "/",
+			MaxAge:   24 * 60 * 60,
+		})
+
 
 		successMessage := "Registry Succesfully"
 		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)

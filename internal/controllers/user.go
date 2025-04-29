@@ -143,6 +143,17 @@ func DeleteUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleErrorWithStatus(c, err, logger)
 		}
 
+		// TODO: Change to secure when deploy
+		c.Cookie(&fiber.Cookie{
+			Name:     "jwt",
+			Value:    "",
+			HTTPOnly: true,
+			Secure:   false,
+			SameSite: "None",
+			Path:     "/",
+			MaxAge:   -1,
+		})
+
 		successMessage := "User removed successfully"
 		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
 	}
