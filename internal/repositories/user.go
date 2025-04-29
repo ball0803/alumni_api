@@ -80,31 +80,38 @@ func FetchUserByID(ctx context.Context, driver neo4j.DriverWithContext, id strin
           u.username AS username,
           u.gender AS gender,
           toString(u.dob) AS dob,
+          u.first_name AS first_name,
+          u.last_name AS last_name,
+          u.first_name_eng AS first_name_eng,
+          u.last_name_eng AS last_name_eng,
           u.first_name + " " + u.last_name AS name,
           u.first_name_eng + " " + u.last_name_eng AS name_eng,
           u.profile_picture AS profile_picture,
           u.role AS role,
           {
-              faculty: f.name,
-              department: d.name,
-              field: fld.name,
-              student_type: st.name,
-              education_level: u.education_level,
-              admit_year: u.admit_year,
-              graduate_year: u.graduate_year,
-              gpax: u.gpax
+            student_id: u.student_id,
+            generation: u.generation,
+            admit_year: u.admit_year,
+            graduate_year: u.graduate_year,
+            gpax: u.gpax
           } AS student_info,
+          {
+            faculty: f.name,
+            department: d.name,
+            field: fld.name,
+            student_type: st.name,
+          } AS college_info,
           collect({
-              company: c.name,
-              address: c.address,
-              position: r.position
+            company: c.name,
+            address: c.address,
+            position: r.position
           }) AS companies,
           {
-              email: u.email,
-              github: u.github,
-              linkedin: u.linkdin,
-              facebook: u.facebook,
-              phone: u.phone
+            email: u.email,
+            github: u.github,
+            linkedin: u.linkdin,
+            facebook: u.facebook,
+            phone: u.phone
           } AS contact_info
 	`
 
