@@ -17,7 +17,6 @@ func AuthRoutes(group fiber.Router, driver neo4j.DriverWithContext, logger *zap.
 	auth.Post("/logout", controllers.Logout(driver, logger))
 	auth.Get("/verify-account", controllers.VerifyAccount(driver, logger))
 	auth.Post("/request_OTR", controllers.RequestAlumniOneTimeRegistry(driver, logger))
-
 	auth.Post("/request/password_reset", controllers.RequestChangePassword(driver, logger))
 	auth.Post("/request/password_reset/confirm", controllers.ChangePassword(driver, logger))
 

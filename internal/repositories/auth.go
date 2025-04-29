@@ -404,7 +404,7 @@ func RequestChangePassword(ctx context.Context, driver neo4j.DriverWithContext, 
             email: $email
         })
         RETURN
-          u.user_id AS user_id,
+          u.user_id AS user_id
     `
 	params := map[string]interface{}{
 		"email": email,
