@@ -369,13 +369,13 @@ func VerifyAccount(ctx context.Context, driver neo4j.DriverWithContext, user_id,
 
 	ret := map[string]interface{}{
 		"username": record.Values[2].(string),
-		"role": record.Values[2].(string),
+		"role":     record.Values[2].(string),
 	}
 
 	return ret, nil
 }
 
-func RequestChangePassword(ctx context.Context, driver neo4j.DriverWithContext, user_id string, logger *zap.Logger) error {
+func RequestChangePassword(ctx context.Context, driver neo4j.DriverWithContext, email string, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -399,24 +399,15 @@ func RequestChangePassword(ctx context.Context, driver neo4j.DriverWithContext, 
 		}
 	}()
 
-	token := auth.GenerateVerificationToken()
-
-	jwtToken, err := auth.GenerateVerificationJWT(user_id, token)
-	if err != nil {
-		logger.Error("Failed to create verify jwt", zap.Error(err))
-		return fmt.Errorf("failed to create verify jwt: %w", err)
-	}
-
 	query := `
         MATCH (u:UserProfile {
-            user_id: $userID
+            email: $email
         })
-        SET u.reset_password_token = $token
-        RETURN u.email AS email
+        RETURN
+          u.user_id AS user_id,
     `
 	params := map[string]interface{}{
-		"userID": user_id,
-		"token":  token,
+		"email": email,
 	}
 
 	result, err := tx.Run(ctx, query, params)
@@ -427,17 +418,43 @@ func RequestChangePassword(ctx context.Context, driver neo4j.DriverWithContext, 
 
 	record, err := result.Single(ctx)
 	if err != nil {
-		logger.Warn("User not found", zap.String("user_id", user_id))
+		logger.Warn("User not found", zap.Error(err))
 		return fmt.Errorf("user not found: %w", err)
 	}
-	email, ok := record.Get("email")
+
+	user_id, ok := record.Get("user_id")
 	if !ok {
-		logger.Warn("Email not found", zap.String("user_id", user_id))
-		return fmt.Errorf("Email not found: %w", err)
+		logger.Warn("user_id not found", zap.Error(err))
+		return fmt.Errorf("user_id not found: %w", err)
+	}
+
+	token := auth.GenerateVerificationToken()
+
+	jwtToken, err := auth.GenerateVerificationJWT(user_id.(string), token)
+	if err != nil {
+		logger.Error("Failed to create verify jwt", zap.Error(err))
+		return fmt.Errorf("failed to create verify jwt: %w", err)
+	}
+
+	query = `
+        MATCH (u:UserProfile {
+            user_id: $user_id
+        })
+        SET u.reset_password_token = $token
+    `
+	params = map[string]interface{}{
+		"user_id": user_id,
+		"token":   token,
+	}
+
+	_, err = tx.Run(ctx, query, params)
+	if err != nil {
+		logger.Error("Failed to update user", zap.Error(err))
+		return fmt.Errorf("error updating user: %w", err)
 	}
 
 	// Send verification email
-	if err = utils.SendResetMail(email.(string), jwtToken); err != nil {
+	if err = utils.SendResetMail(email, jwtToken); err != nil {
 		logger.Error("Failed to send verification email", zap.Error(err))
 		// Rollback the transaction if email sending fails
 		if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {

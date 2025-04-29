@@ -157,7 +157,6 @@ func RegistryAlumnus(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.H
 			MaxAge:   24 * 60 * 60,
 		})
 
-
 		successMessage := "Registry Succesfully"
 		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
 	}
@@ -226,21 +225,13 @@ func VerifyAccount(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Han
 
 func RequestChangePassword(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		claim, ok := c.Locals("claims").(*models.Claims)
-		if !ok {
-			return HandleFail(c, fiber.StatusUnauthorized, "Unauthorized claim", logger, nil)
+		var req models.EmailRequest
+
+		if err := validators.Request(c, &req); err != nil {
+			return HandleFail(c, fiber.StatusBadRequest, "Validation failed", logger, err)
 		}
 
-		exists, err := services.UserExist(c.Context(), driver, claim.UserID, logger)
-		if err != nil {
-			return HandleErrorWithStatus(c, err, logger)
-		}
-
-		if !exists {
-			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", claim.UserID), logger, nil)
-		}
-
-		err = repositories.RequestChangePassword(c.Context(), driver, claim.UserID, logger)
+		err := repositories.RequestChangePassword(c.Context(), driver, req.Email, logger)
 		if err != nil {
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}
