@@ -268,6 +268,16 @@ func ChangePassword(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}
 
+		c.Cookie(&fiber.Cookie{
+			Name:     "jwt",
+			Value:    "",
+			HTTPOnly: true,
+			Secure:   false,
+			SameSite: "None",
+			Path:     "/",
+			MaxAge:   -1,
+		})
+
 		successMessage := "Change Password Succesfully"
 		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
 	}
@@ -328,6 +338,16 @@ func VerifyEmail(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 		if err != nil {
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}
+
+		c.Cookie(&fiber.Cookie{
+			Name:     "jwt",
+			Value:    "",
+			HTTPOnly: true,
+			Secure:   false,
+			SameSite: "None",
+			Path:     "/",
+			MaxAge:   -1,
+		})
 
 		return c.Redirect(fmt.Sprintf("%s/homeuser", client), fiber.StatusFound)
 	}
