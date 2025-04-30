@@ -231,13 +231,13 @@ func RequestChangePassword(driver neo4j.DriverWithContext, logger *zap.Logger) f
 			return HandleFail(c, fiber.StatusBadRequest, "Validation failed", logger, err)
 		}
 
-		err := repositories.RequestChangePassword(c.Context(), driver, req.Email, logger)
+		data, err := repositories.RequestChangePassword(c.Context(), driver, req.Email, logger)
 		if err != nil {
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}
 
 		successMessage := "Request Reset Password Succesfully"
-		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
+		return HandleSuccess(c, fiber.StatusOK, successMessage, data, logger)
 	}
 }
 
@@ -295,13 +295,13 @@ func RequestChangeEmail(driver neo4j.DriverWithContext, logger *zap.Logger) fibe
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", claim.UserID), logger, nil)
 		}
 
-		err = repositories.RequestChangeMail(c.Context(), driver, claim.UserID, req.Email, logger)
+		data, err := repositories.RequestChangeMail(c.Context(), driver, claim.UserID, req.Email, logger)
 		if err != nil {
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}
 
 		successMessage := "Request Reset Password Succesfully"
-		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
+		return HandleSuccess(c, fiber.StatusOK, successMessage, data, logger)
 	}
 }
 
