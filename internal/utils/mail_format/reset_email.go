@@ -82,6 +82,7 @@ const VerifyChangeMail = `
                 <p>Use the verification click verify button below to complete your email address associated:</p>
                 <a href="%s/verify-email?token=%s" class="button">Verify Email</a>
                 <p class="help-text">If you didn't register CPE Alumni account, you can safely ignore this email.</p>
+                <h3 style="color: #1e88e5; text-align: center;">Ref: %s</h3>
             </div>
             <div class="footer">
                 <p>&copy; 2025 CPE Alumni.</p>

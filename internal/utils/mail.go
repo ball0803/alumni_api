@@ -147,20 +147,20 @@ func SendVerificationEmail(email, token, ref string) error {
 	return nil
 }
 
-func SendVerificationChangeEmail(email, token string) error {
+func SendVerificationChangeEmail(email, token, ref string) error {
 	subject := "Alumni Verification"
 	host := config.GetEnv("CLIENT", "")
-	body := fmt.Sprintf(mail_format.VerifyChangeMail, host, token)
+	body := fmt.Sprintf(mail_format.VerifyChangeMail, host, token, ref)
 	if err := sendEmailHTML(email, subject, body); err != nil {
 		return err
 	}
 	return nil
 }
 
-func SendResetMail(email, token string) error {
+func SendResetMail(email, token, ref string) error {
 	subject := "Alumni Password Reset"
 	host := config.GetEnv("CLIENT", "")
-	body := fmt.Sprintf(mail_format.ResetPasswordMail, host, token)
+	body := fmt.Sprintf(mail_format.ResetPasswordMail, host, token, ref)
 	if err := sendEmailHTML(email, subject, body); err != nil {
 		return err
 	}
