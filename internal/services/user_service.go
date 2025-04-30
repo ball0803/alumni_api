@@ -115,3 +115,40 @@ func UserVerify(ctx context.Context, driver neo4j.DriverWithContext, id string, 
 
 	return isVerify.(bool), nil
 }
+
+func EmailExist(ctx context.Context, driver neo4j.DriverWithContext, email string, logger *zap.Logger) (bool, error) {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeRead,
+	})
+	defer session.Close(ctx)
+
+	query := `
+    MATCH (u:UserProfile {email: $email})
+		RETURN COUNT(u) > 0 AS isEmailExist
+  `
+
+	params := map[string]interface{}{
+		"email": email,
+	}
+
+	result, err := session.Run(ctx, query, params)
+	if err != nil {
+		logger.Error("Error running query", zap.Error(err))
+		return false, fiber.NewError(http.StatusInternalServerError, "Error checking user existence")
+	}
+
+	record, err := result.Single(ctx)
+	if err != nil {
+		logger.Error("Error retrieving result", zap.Error(err))
+		return false, fiber.NewError(http.StatusInternalServerError, "Error retrieving result")
+	}
+
+	isVerify, ok := record.Get("isEmailExist")
+	if !ok {
+		logger.Warn("User not found")
+		return false, fiber.NewError(http.StatusInternalServerError, "Error retrieving result")
+	}
+
+	return isVerify.(bool), nil
+}

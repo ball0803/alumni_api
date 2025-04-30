@@ -566,7 +566,7 @@ func RequestChangeMail(ctx context.Context, driver neo4j.DriverWithContext, user
 
 	token := auth.GenerateVerificationToken()
 
-	jwtToken, err := auth.GenerateVerificationJWT(user_id, token)
+	jwtToken, err := auth.GenerateVerifyEmailJWT(user_id, email, token)
 	if err != nil {
 		logger.Error("Failed to create verify jwt", zap.Error(err))
 		return nil, fmt.Errorf("failed to create verify jwt: %w", err)
@@ -614,7 +614,7 @@ func RequestChangeMail(ctx context.Context, driver neo4j.DriverWithContext, user
 	return ret, nil
 }
 
-func VerifyEmail(ctx context.Context, driver neo4j.DriverWithContext, user_id, token string, logger *zap.Logger) error {
+func VerifyEmail(ctx context.Context, driver neo4j.DriverWithContext, user_id, email, token string, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -648,13 +648,14 @@ func VerifyEmail(ctx context.Context, driver neo4j.DriverWithContext, user_id, t
 		return fmt.Errorf("incorrect verification token")
 	}
 
-	// Update the user to mark them as verified and clear the token
 	updateQuery := `
-        MATCH (u:UserProfile {user_id: $user_id})
-        REMOVE u.change_email_token
-    `
+		MATCH (u:UserProfile {user_id: $user_id})
+		SET u.email = $email
+		REMOVE u.change_email_token
+	`
 	updateParams := map[string]interface{}{
 		"user_id": user_id,
+		"email": email,
 	}
 
 	_, err = session.Run(ctx, updateQuery, updateParams)

@@ -17,6 +17,7 @@ type OneTimeRegistryJWT struct {
 
 type Verify struct {
 	UserID            string `json:"user_id,omitempty" mapstructure:"user_id" validate:"required,uuid4"`
+	Email    					string `json:"email,omitempty" mapstructure:"email" validate:"omitempty,email"`
 	VerificationToken string `json:"token,omitempty" mapstructure:"token"`
 	jwt.RegisteredClaims
 }

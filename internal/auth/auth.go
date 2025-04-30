@@ -121,6 +121,21 @@ func GenerateVerificationJWT(userID, verifyToken string) (string, error) {
 	return token.SignedString(jwtSecret)
 }
 
+func GenerateVerifyEmailJWT(userID, email, verifyToken string) (string, error) {
+	verify := models.Verify{
+		UserID:            userID,
+		Email:						 email,
+		VerificationToken: verifyToken,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(72 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, verify)
+	return token.SignedString(jwtSecret)
+}
+
 func ParseVerification(tokenString string) (*models.Verify, error) {
 	claims := &models.Verify{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {

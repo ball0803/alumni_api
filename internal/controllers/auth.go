@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"alumni_api/config"
 	"alumni_api/internal/auth"
 	"alumni_api/internal/models"
 	"alumni_api/internal/repositories"
@@ -318,14 +317,22 @@ func RequestChangeEmail(driver neo4j.DriverWithContext, logger *zap.Logger) fibe
 func VerifyEmail(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		token := c.Query("token")
-		client := config.GetEnv("CLIENT", "")
 
 		claim, err := auth.ParseVerification(token)
 		if err != nil {
 			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
 		}
 
-		exists, err := services.UserExist(c.Context(), driver, claim.UserID, logger)
+		exists, err := services.EmailExist(c.Context(), driver, claim.Email, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("Email %s Already Exist", claim.Email), logger, nil)
+		}
+
+		exists, err = services.UserExist(c.Context(), driver, claim.UserID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -334,22 +341,13 @@ func VerifyEmail(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", claim.UserID), logger, nil)
 		}
 
-		err = repositories.VerifyEmail(c.Context(), driver, claim.UserID, claim.VerificationToken, logger)
+		err = repositories.VerifyEmail(c.Context(), driver, claim.UserID, claim.Email, claim.VerificationToken, logger)
 		if err != nil {
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}
 
-		c.Cookie(&fiber.Cookie{
-			Name:     "jwt",
-			Value:    "",
-			HTTPOnly: true,
-			Secure:   false,
-			SameSite: "None",
-			Path:     "/",
-			MaxAge:   -1,
-		})
-
-		return c.Redirect(fmt.Sprintf("%s/homeuser", client), fiber.StatusFound)
+		successMessage := "Change Email Succesfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
 	}
 }
 
