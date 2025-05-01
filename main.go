@@ -40,11 +40,12 @@ func main() {
 		AllowHeaders:     "Content-Type,Authorization",
 		AllowCredentials: true,
 	}))
-	app.Static("/uploads", "./uploads")
+	api.Static("/uploads", "/app/uploads")
 
 	api.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Hello, World!")
 	})
+
 	app.Use(middlewares.RequestLogger(logger))
 
 	routes.UserRoutes(api, driver, logger)

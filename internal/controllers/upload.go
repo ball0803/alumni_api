@@ -12,7 +12,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const uploadDir = "./uploads"
+const uploadDir = "/app/uploads/"
 
 func Upload(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
