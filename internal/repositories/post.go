@@ -333,7 +333,8 @@ func GetCommentByPostID(ctx context.Context, driver neo4j.DriverWithContext, pos
         comment.created_timestamp AS created_timestamp,
         user.user_id AS user_id,
         user.username AS username,
-        user.first_name + user.last_name AS name,
+        user.first_name + " " + user.last_name AS fullname,
+        user.first_name_eng + " " + user.last_name_eng AS fullname_eng,
         user.profile_picture AS profile_picture,
         CASE
             WHEN target:Post THEN null
