@@ -1,15 +1,18 @@
 package controllers
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"go.uber.org/zap"
 )
 
-const uploadDir = "/var/www/html/uploads/temp"
+const uploadDir = "./uploads"
 
 func Upload(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
@@ -18,23 +21,37 @@ func Upload(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 			return HandleErrorWithStatus(c, err, logger)
 		}
 
+		// Validate size (e.g., limit to 5MB)
+		if file.Size > 5*1024*1024 {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "File too large"})
+		}
+
+		// Optional: validate MIME type (basic check)
+		contentType := file.Header.Get("Content-Type")
+		if !strings.HasPrefix(contentType, "image/") {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid file type"})
+		}
+
+		// Ensure upload directory exists
 		if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
 			os.MkdirAll(uploadDir, os.ModePerm)
 		}
 
-		// Define the file path
-		filePath := filepath.Join(uploadDir, file.Filename)
+		// Use a safe, unique filename
+		extension := filepath.Ext(file.Filename)
+		uniqueName := fmt.Sprintf("%d%s", time.Now().UnixNano(), extension)
+		filePath := filepath.Join(uploadDir, uniqueName)
 
+		// Save the file
 		if err := c.SaveFile(file, filePath); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save file"})
 		}
 
-		successMessage := "Upload Sucessfully"
-		return HandleSuccess(
-			c,
-			fiber.StatusOK,
-			successMessage,
-			c.JSON(fiber.Map{"url": "/uploads/" + file.Filename}),
-			logger)
+		ret := map[string]interface{}{
+			"url": "/uploads/" + uniqueName,
+		}
+
+		// Return public URL
+		return HandleSuccess(c, fiber.StatusOK, "Upload successfully", ret, logger)
 	}
 }

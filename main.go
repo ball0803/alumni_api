@@ -40,6 +40,7 @@ func main() {
 		AllowHeaders:     "Content-Type,Authorization",
 		AllowCredentials: true,
 	}))
+	app.Static("/uploads", "./uploads")
 
 	api.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Hello, World!")
