@@ -295,7 +295,16 @@ func RequestChangeEmail(driver neo4j.DriverWithContext, logger *zap.Logger) fibe
 			return HandleFail(c, fiber.StatusUnauthorized, "Unauthorized claim", logger, nil)
 		}
 
-		exists, err := services.UserExist(c.Context(), driver, claim.UserID, logger)
+		exists, err := services.EmailExist(c.Context(), driver, req.Email, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("Email %s Already Exist", req.Email), logger, nil)
+		}
+
+		exists, err = services.UserExist(c.Context(), driver, claim.UserID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
@@ -323,16 +332,7 @@ func VerifyEmail(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
 		}
 
-		exists, err := services.EmailExist(c.Context(), driver, claim.Email, logger)
-		if err != nil {
-			return HandleErrorWithStatus(c, err, logger)
-		}
-
-		if exists {
-			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("Email %s Already Exist", claim.Email), logger, nil)
-		}
-
-		exists, err = services.UserExist(c.Context(), driver, claim.UserID, logger)
+		exists, err := services.UserExist(c.Context(), driver, claim.UserID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
