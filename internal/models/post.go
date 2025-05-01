@@ -14,7 +14,7 @@ type Post struct {
 	PostType   string    `json:"post_type,omitempty" mapstructure:"post_type" validate:"required,oneof=event story job mentorship showcase announcement discussion survey"`
 	StartDate  time.Time `json:"start_date,omitempty" mapstructure:"start_date" validate:"omitempty"`
 	EndDate    time.Time `json:"end_date,omitempty" mapstructure:"end_date" validate:"omitempty"`
-	MediaURL   []string  `json:"media_url,omitempty" mapstructure:"media_url" validate:"omitempty,dive,url"`
+	MediaURL   []string  `json:"media_urls,omitempty" mapstructure:"media_urls" validate:"omitempty,dive,url"`
 	Visibility string    `json:"visibility,omitempty" mapstructure:"visibility" validate:"required,oneof=alumnus admin all"`
 }
 
@@ -24,7 +24,7 @@ type UpdatePostRequest struct {
 	PostType   string    `json:"post_type,omitempty" mapstructure:"post_type" validate:"omitempty,oneof=event story job mentorship showcase announcement discussion survey"`
 	StartDate  time.Time `json:"start_date,omitempty" mapstructure:"start_date" validate:"omitempty"`
 	EndDate    time.Time `json:"end_date,omitempty" mapstructure:"end_date" validate:"omitempty"`
-	MediaURL   []string  `json:"media_url,omitempty" mapstructure:"media_url" validate:"omitempty,dive,url"`
+	MediaURL   []string  `json:"media_urls,omitempty" mapstructure:"media_urls" validate:"omitempty,dive,url"`
 	Visibility string    `json:"visibility,omitempty" mapstructure:"visibility" validate:"omitempty,oneof=alumnus admin all"`
 }
 
