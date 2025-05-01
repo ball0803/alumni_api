@@ -34,7 +34,8 @@ type Comment struct {
 	CreatedAt       int64     `json:"created_timestamp"`
 	UserID          string    `json:"user_id"`
 	Username        string    `json:"username"`
-	Name            string    `json:"name,omitempty"`
+	Fullname        string    `json:"fullname,omitempty"`
+	FullnameEng     string    `json:"fullname_eng,omitempty"`
 	ProfilePicture  string    `json:"profile_picture,omitempty"`
 	ParentCommentID *string   `json:"parent_comment_id,omitempty"`
 	LikeCounts      int64     `json:"like_count"`

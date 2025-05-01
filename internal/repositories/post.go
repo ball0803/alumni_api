@@ -371,11 +371,12 @@ func GetCommentByPostID(ctx context.Context, driver neo4j.DriverWithContext, pos
 			CreatedAt:       int64(record.Values[2].(int64)),
 			UserID:          utils.SafeString(record.Values[3]),
 			Username:        utils.SafeString(record.Values[4]),
-			Name:            utils.SafeString(record.Values[5]),
-			ProfilePicture:  utils.SafeString(record.Values[6]),
-			ParentCommentID: utils.OptionalString(record.Values[7]),
-			LikeCounts:      int64(record.Values[8].(int64)),
-			HasLike:         record.Values[9].(bool),
+			Fullname:        utils.SafeString(record.Values[5]),
+			FullnameEng:     utils.SafeString(record.Values[6]),
+			ProfilePicture:  utils.SafeString(record.Values[7]),
+			ParentCommentID: utils.OptionalString(record.Values[8]),
+			LikeCounts:      int64(record.Values[9].(int64)),
+			HasLike:         record.Values[10].(bool),
 		}
 		comments = append(comments, comment)
 	}
