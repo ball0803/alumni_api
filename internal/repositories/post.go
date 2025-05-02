@@ -93,6 +93,7 @@ func GetPostByID(ctx context.Context, driver neo4j.DriverWithContext, postID, us
       p.content AS content,
       p.post_type AS post_type,
       p.media_urls AS media_urls,
+      p.redirect_link AS redirect_link,
       p.start_date AS start_date,
       p.end_date AS end_date,
       p.created_timestamp AS created_timestamp,
@@ -139,18 +140,22 @@ func CreatePost(ctx context.Context, driver neo4j.DriverWithContext, userID stri
       post_id: $post_id,
       title: $title,
       content: $content,
+      media_urls: $media_urls,
+      redirect_link: $redirect_link,
       post_type: $post_type,
       visibility: $visibility,
       created_timestamp: timestamp()
     `
 
 	params := map[string]interface{}{
-		"user_id":    userID,
-		"post_id":    postID,
-		"title":      post.Title,
-		"content":    post.Content,
-		"post_type":  post.PostType,
-		"visibility": post.Visibility,
+		"user_id":       userID,
+		"post_id":       postID,
+		"title":         post.Title,
+		"content":       post.Content,
+		"media_urls":    post.MediaURL,
+		"redirect_link": post.RedirectLink,
+		"post_type":     post.PostType,
+		"visibility":    post.Visibility,
 	}
 
 	if slices.Contains(models.AllowRangeType, post.PostType) {
