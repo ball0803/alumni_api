@@ -14,6 +14,70 @@ import (
 	"go.uber.org/zap"
 )
 
+func GetAllUser(ctx context.Context, driver neo4j.DriverWithContext, logger *zap.Logger) (map[string]interface{}, error) {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{DatabaseName: "neo4j", AccessMode: neo4j.AccessModeRead})
+	defer session.Close(ctx)
+
+	query := `
+    MATCH (u:UserProfile)
+    OPTIONAL MATCH (u)-[r:HAS_WORK_WITH]->(c:Company)
+    OPTIONAL MATCH (u)-->(st:StudentType)<--(fld:Field)<--(d:Department)<--(f:Faculty)
+    WHERE u.role = "alumnus
+    RETURN
+      u.user_id AS user_id,
+      u.username AS username,
+      u.first_name AS first_name,
+      u.last_name AS last_name,
+      u.first_name_eng AS first_name_eng,
+      u.last_name_eng AS last_name_eng,
+      u.first_name + " " + u.last_name AS name,
+      u.first_name_eng + " " + u.last_name_eng AS name_eng,
+      u.profile_picture AS profile_picture,
+      u.role AS role,
+      {
+        student_id: u.student_id,
+        generation: u.generation,
+        admit_year: u.admit_year,
+        graduate_year: u.graduate_year,
+        gpax: u.gpax
+      } AS student_info,
+      {
+        faculty: f.name,
+        department: d.name,
+        field: fld.name,
+        student_type: st.name
+      } AS college_info,
+      collect({
+        company: c.name,
+        address: c.address,
+        position: r.position
+      }) AS companies,
+      {
+        email: u.email,
+        github: u.github,
+        linkedin: u.linkdin,
+        facebook: u.facebook,
+        phone: u.phone
+      } AS contact_info
+	`
+
+	result, err := session.Run(ctx, query, nil)
+	if err != nil {
+		logger.Error(models.ErrRetrievalFailed, zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, models.ErrRetrievalFailed)
+	}
+
+	record, err := result.Single(ctx)
+	if err != nil {
+		logger.Error(models.ErrRetrievalFailed, zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, models.ErrRetrievalFailed)
+	}
+
+	ret := utils.CleanNullValues(record.AsMap()).(map[string]interface{})
+
+	return ret, nil
+}
+
 func CreateProfile(ctx context.Context, driver neo4j.DriverWithContext, user models.CreateProfileRequest, logger *zap.Logger) (map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",

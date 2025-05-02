@@ -36,6 +36,24 @@ func CreateProfile(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Han
 }
 
 // GetUserByID handles the request to get a user by ID from the Neo4j database.
+func GetAllUser(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+
+		users, err := repositories.GetAllUser(c.Context(), driver, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if err := encrypt.DecryptMaps(users, models.UserDecryptField); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		successMessage := "User retrieved successfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, users, logger)
+	}
+}
+
+// GetUserByID handles the request to get a user by ID from the Neo4j database.
 func GetUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		id := c.Params("id")

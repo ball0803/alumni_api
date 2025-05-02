@@ -21,6 +21,7 @@ func UserRoutes(group fiber.Router, driver neo4j.DriverWithContext, logger *zap.
 	userWithAuth.Use(middlewares.JWTMiddleware(logger))
 
 	// User endpoints
+	userWithAuth.Get("/", controllers.GetAllUser(driver, logger))
 	userWithAuth.Post("/", controllers.CreateProfile(driver, logger))
 	userWithAuth.Get("/:id", controllers.GetUserByID(driver, logger))
 	userWithAuth.Put("/:id", controllers.UpdateUserByID(driver, logger))
