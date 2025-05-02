@@ -14,7 +14,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func GetAllUser(ctx context.Context, driver neo4j.DriverWithContext, logger *zap.Logger) (map[string]interface{}, error) {
+func GetAllUser(ctx context.Context, driver neo4j.DriverWithContext, logger *zap.Logger) ([]map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{DatabaseName: "neo4j", AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
@@ -67,15 +67,21 @@ func GetAllUser(ctx context.Context, driver neo4j.DriverWithContext, logger *zap
 		return nil, fiber.NewError(http.StatusInternalServerError, models.ErrRetrievalFailed)
 	}
 
-	record, err := result.Single(ctx)
+	records, err := result.Collect(ctx)
 	if err != nil {
-		logger.Error(models.ErrRetrievalFailed, zap.Error(err))
-		return nil, fiber.NewError(http.StatusInternalServerError, models.ErrRetrievalFailed)
+		logger.Error("Failed to collect query results", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Error retrieving data")
 	}
 
-	ret := utils.CleanNullValues(record.AsMap()).(map[string]interface{})
+	var users []map[string]interface{}
 
-	return ret, nil
+	// Process each record
+	for _, record := range records {
+		user := utils.CleanNullValues(record.AsMap()).(map[string]interface{})
+		users = append(users, user)
+	}
+
+	return users, nil
 }
 
 func CreateProfile(ctx context.Context, driver neo4j.DriverWithContext, user models.CreateProfileRequest, logger *zap.Logger) (map[string]interface{}, error) {
