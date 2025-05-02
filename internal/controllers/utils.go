@@ -35,7 +35,7 @@ func Report(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 		}
 
 		var req models.Report
-		req.ID = claim.UserID
+		req.UserID = claim.UserID
 
 		if err := validators.Request(c, &req); err != nil {
 			return HandleFailWithStatus(c, err, logger)
