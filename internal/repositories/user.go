@@ -22,7 +22,7 @@ func GetAllUser(ctx context.Context, driver neo4j.DriverWithContext, logger *zap
     MATCH (u:UserProfile)
     OPTIONAL MATCH (u)-[r:HAS_WORK_WITH]->(c:Company)
     OPTIONAL MATCH (u)-->(st:StudentType)<--(fld:Field)<--(d:Department)<--(f:Faculty)
-    WHERE u.role = "alumnus
+    WHERE u.role = "alumnus"
     RETURN
       u.user_id AS user_id,
       u.username AS username,
