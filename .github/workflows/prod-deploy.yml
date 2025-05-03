@@ -49,15 +49,11 @@ jobs:
             echo "OLD_COLOR=green" >> $GITHUB_ENV
           fi
           echo "Deploying to $NEW_COLOR"
-
-      - name: Clean up old contaniers
-        run: |
-          cd ..
-          docker-compose --env-file .env rm -f api-$NEW_COLOR
           
       - name: Build and Deploy new container
         run: |
           cd ..
+          docker-compose --env-file .env rm -f api-$NEW_COLOR
           docker-compose --env-file .env up -d --build api-$NEW_COLOR
         
       - name: Check Health
