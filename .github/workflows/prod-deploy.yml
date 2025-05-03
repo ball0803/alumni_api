@@ -51,7 +51,7 @@ jobs:
           echo "Deploying to $NEW_COLOR"
           
       - name: Build and Deploy new container
-        run:
+        run: |
           cd ..
           docker-compose --env-file .env up -d --build api-$NEW_COLOR
         
