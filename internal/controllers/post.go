@@ -15,8 +15,15 @@ import (
 
 func GetAllPost(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		userID := ""
 
-		posts, err := repositories.GetAllPosts(c.Context(), driver, logger)
+		if tokenString, ok := auth.ExtractJWT_Cookie(c); ok {
+			if claims, err := auth.ParseJWT(tokenString); err == nil {
+				userID = claims.UserID
+			}
+		}
+
+		posts, err := repositories.GetAllPosts(c.Context(), driver, userID, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}

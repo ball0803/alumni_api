@@ -15,7 +15,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func GetAllPosts(ctx context.Context, driver neo4j.DriverWithContext, logger *zap.Logger) ([]map[string]interface{}, error) {
+func GetAllPosts(ctx context.Context, driver neo4j.DriverWithContext, userId string, logger *zap.Logger) ([]map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeRead,
@@ -45,8 +45,12 @@ func GetAllPosts(ctx context.Context, driver neo4j.DriverWithContext, logger *za
       CASE WHEN userLike IS NULL THEN false ELSE true END AS has_liked
   `
 
+	pararms := map[string]interface{}{
+		"user_id": userId,
+	}
+
 	// Run the query
-	result, err := session.Run(ctx, query, nil)
+	result, err := session.Run(ctx, query, pararms)
 	if err != nil {
 		logger.Error("Failed to retrieve posts", zap.Error(err))
 		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to retrieve posts")
