@@ -27,6 +27,7 @@ func GetAllPosts(ctx context.Context, driver neo4j.DriverWithContext, logger *za
     OPTIONAL MATCH (p)<-[l:LIKES]-(:UserProfile)
     OPTIONAL MATCH (p)<-[v:HAS_VIEWED]-(:UserProfile)
     OPTIONAL MATCH (p)<-[c:COMMENTED_ON]-(:Comment)
+    OPTIONAL MATCH (p)<-[userLike:LIKES]-(:UserProfile {user_id: $user_id})
     RETURN 
       p.post_id AS post_id,
       p.title AS title,
@@ -40,7 +41,8 @@ func GetAllPosts(ctx context.Context, driver neo4j.DriverWithContext, logger *za
       author.profile_picture AS profile_picture,
       COUNT(l) AS likes_count,
       COUNT(v) AS views_count,
-      COUNT(c) AS comments_count
+      COUNT(c) AS comments_count,
+      CASE WHEN userLike IS NULL THEN false ELSE true END AS has_liked
   `
 
 	// Run the query
