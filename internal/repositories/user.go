@@ -19,10 +19,9 @@ func GetAllUser(ctx context.Context, driver neo4j.DriverWithContext, logger *zap
 	defer session.Close(ctx)
 
 	query := `
-    MATCH (u:UserProfile)
+		MATCH (u:UserProfile {role: "alumnus"})
     OPTIONAL MATCH (u)-[r:HAS_WORK_WITH]->(c:Company)
     OPTIONAL MATCH (u)-->(st:StudentType)<--(fld:Field)<--(d:Department)<--(f:Faculty)
-    WHERE u.role = "alumnus"
     RETURN
       u.user_id AS user_id,
       u.username AS username,
@@ -34,32 +33,26 @@ func GetAllUser(ctx context.Context, driver neo4j.DriverWithContext, logger *zap
       u.first_name_eng + " " + u.last_name_eng AS name_eng,
       u.profile_picture AS profile_picture,
       u.role AS role,
-      {
-        student_id: u.student_id,
-        generation: u.generation,
-        admit_year: u.admit_year,
-        graduate_year: u.graduate_year,
-        gpax: u.gpax
-      } AS student_info,
-      {
-        faculty: f.name,
-        department: d.name,
-        field: fld.name,
-        student_type: st.name
-      } AS college_info,
+			u.student_id AS student_id,
+			u.generation AS generation,
+			u.admit_year AS admit_year,
+			u.graduate_year AS graduate_year,
+			u.gpax AS gpax,
+			f.name AS faculty,
+			d.name AS department,
+			fld.name AS field,
+			st.name AS student_type,
+      u.email AS email,
+      u.github AS github,
+      u.linkdin AS linkedin,
+      u.facebook AS facebook,
+      u.phone AS phone,
       collect({
         company: c.name,
         address: c.address,
         position: r.position
-      }) AS companies,
-      {
-        email: u.email,
-        github: u.github,
-        linkedin: u.linkdin,
-        facebook: u.facebook,
-        phone: u.phone
-      } AS contact_info
-	`
+      }) AS companies
+	 `
 
 	result, err := session.Run(ctx, query, nil)
 	if err != nil {
@@ -75,7 +68,6 @@ func GetAllUser(ctx context.Context, driver neo4j.DriverWithContext, logger *zap
 
 	var users []map[string]interface{}
 
-	// Process each record
 	for _, record := range records {
 		user := utils.CleanNullValues(record.AsMap()).(map[string]interface{})
 		users = append(users, user)
