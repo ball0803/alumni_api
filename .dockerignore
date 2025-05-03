@@ -3,3 +3,4 @@
 fly.toml
 *.log
 tmp/main.exe
+uploads/
