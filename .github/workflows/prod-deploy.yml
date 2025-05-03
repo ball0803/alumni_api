@@ -5,9 +5,6 @@ on:
     branches: [prod]
   workflow_dispatch:
 
-env:
-  COMPOSE_FILE: ../docker-compose.yml
-
 jobs:
   deploy:
     runs-on: self-hosted
@@ -55,6 +52,7 @@ jobs:
           
       - name: Build and Deploy new container
         run:
+          cd ..
           docker-compose --env-file .env up -d --build api-$NEW_COLOR
         
       - name: Check Health
