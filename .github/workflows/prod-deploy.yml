@@ -67,7 +67,6 @@ jobs:
         run: |
           # Make the new container active
           docker exec nginx /bin/sh /scripts/switch-color.sh
-          
           # Verify switch
           CURRENT_COLOR=$(docker exec nginx grep -oP 'server alumni-api-\K(blue|green)' /etc/nginx/nginx.conf)
           if [ "$CURRENT_COLOR" != "$NEW_COLOR" ]; then
