@@ -15,7 +15,7 @@ jobs:
 
       - name: Create .env file
         run: |
-          cat <<EOF > .env
+          cat <<EOF > ../.env
           DB_ENV=${{ secrets.DB_ENV }}
           NEO4J_LOCAL_URI=${{ secrets.NEO4J_LOCAL_URI }}
           NEO4J_LOCAL_CONTAINER_URI=${{ secrets.NEO4J_LOCAL_CONTAINER_URI }}
