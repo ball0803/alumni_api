@@ -53,6 +53,7 @@ jobs:
       - name: Build and Deploy new container
         run: |
           cd ..
+          cat .env
           docker-compose --env-file .env rm -f api-$NEW_COLOR
           docker-compose --env-file .env up -d --build api-$NEW_COLOR
         
