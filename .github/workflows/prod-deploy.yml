@@ -55,7 +55,7 @@ jobs:
           cd ..
           docker-compose --env-file .env rm -f api-$NEW_COLOR
           docker volume prune -f
-          docker-compose --env-file .env up -d --build --force-recrete api-$NEW_COLOR
+          docker-compose --env-file .env up -d --build --force-recreate api-$NEW_COLOR
         
       - name: Check Health
         run: |
