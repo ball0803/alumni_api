@@ -32,6 +32,7 @@ func GetAllPosts(ctx context.Context, driver neo4j.DriverWithContext, logger *za
       p.title AS title,
       p.post_type AS post_type,
       p.media_urls AS media_urls,
+      p.redirect_link AS redirect_link,
       p.start_date AS start_date,
       p.end_date AS end_date,
       author.first_name + " " + author.last_name AS name,
