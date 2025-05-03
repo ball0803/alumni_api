@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 env:
-  COMPOSE_FILE: docker-compose.prod.yml
+  COMPOSE_FILE: ../docker-compose.yml
 
 jobs:
   deploy:
@@ -34,6 +34,7 @@ jobs:
           GF_SECURITY_ADMIN_PASSWORD=${{ secrets.GF_SECURITY_ADMIN_PASSWORD }}
           SENDER_GMAIL=${{ secrets.SENDER_GMAIL }}
           SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+          CLIENT=${{ secrets.CLIENT }}
           PORT=${{ secrets.PORT }}
           ENV=${{ secrets.ENV }}
           EOF
@@ -54,8 +55,7 @@ jobs:
           
       - name: Build and Deploy new container
         run:
-        # run: docker-compose -f docker-compose.prod.yml --env-file .env build api-$NEW_COLOR
-          docker-compose -f docker-compose.prod.yml --env-file .env up -d --build api-$NEW_COLOR
+          docker-compose --env-file .env up -d --build api-$NEW_COLOR
         
       - name: Check Health
         run: |
