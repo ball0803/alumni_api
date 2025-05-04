@@ -115,14 +115,15 @@ func RegistryAlumnus(ctx context.Context, driver neo4j.DriverWithContext, user m
 
 	// Update the existing user with the new password and verification token
 	updateQuery := `
-		MATCH (u:UserProfile {email: $email})
-		SET
-			u.username = $username,
-			u.user_password = $password,
-			u.is_verify = true,
-			u.role = $role
-		RETURN
-			u.user_id AS user_id
+    MATCH (u:UserProfile {email: $email})
+    SET
+        u.username = $username,
+        u.user_password = $password,
+        u.is_verify = true,
+        u.role = $role,
+        u.user_id = COALESCE(u.user_id, randomUUID())
+    RETURN
+        u.user_id AS user_id
   `
 
 	updateParams := map[string]interface{}{

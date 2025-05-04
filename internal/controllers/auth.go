@@ -145,9 +145,12 @@ func RegistryAlumnus(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.H
 		if err != nil {
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)
 		}
-		user_id, _ := user["user_id"]
+		userID, ok := user["user_id"].(string)
+		if !ok {
+			return HandleError(c, fiber.StatusInternalServerError, "Invalid user_id returned", logger, nil)
+		}
 
-		token, err := auth.GenerateJWT(user_id.(string), "alumnus", 0)
+		token, err := auth.GenerateJWT(userID, "alumnus", 0)
 		if err != nil {
 			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
 		}
