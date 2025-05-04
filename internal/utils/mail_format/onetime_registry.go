@@ -69,7 +69,7 @@ const OneTimeRegistrySucc = `
               <h2 style="color: #1e88e5; text-align: center;">One Time Registry</h2>
               <p>Hi,</p>
               <p>You recently requested one time registration for your CPE Alumni account. Click the button below to proceed.</p>
-              <a href="%s/registyCPE?token=%s" class="button">Registry</a>
+              <a href="%s/registryCPE?token=%s" class="button">Registry</a>
               <p class="help-text">
                 If you did not request a registration reset, please ignore this email or reply to let us know.
                 This request link is only valid for the next 1 hour.
