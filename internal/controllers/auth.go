@@ -109,6 +109,15 @@ func RegistryUser(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Hand
 			return HandleFail(c, fiber.StatusBadRequest, "Validation failed", logger, err)
 		}
 
+		exists, err := services.EmailExist(c.Context(), driver, req.Email, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		if exists {
+			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("Email %s Already Exist", req.Email), logger, nil)
+		}
+
 		user, err := repositories.RegistryUser(c.Context(), driver, req, logger)
 		if err != nil {
 			return HandleError(c, fiber.StatusUnauthorized, err.Error(), logger, nil)

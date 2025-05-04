@@ -655,7 +655,7 @@ func VerifyEmail(ctx context.Context, driver neo4j.DriverWithContext, user_id, e
 	`
 	updateParams := map[string]interface{}{
 		"user_id": user_id,
-		"email": email,
+		"email":   email,
 	}
 
 	_, err = session.Run(ctx, updateQuery, updateParams)
@@ -693,7 +693,7 @@ func RequestAlumniOneTimeRegistry(ctx context.Context, driver neo4j.DriverWithCo
 
 	query := `
     MATCH (u:UserProfile {email: $email})
-    WHERE u.is_verify = false OR u.is_verify IS NULL
+    WHERE u.is_verify = false OR u.is_verify IS NULL OR u.role = "alumnus"
     RETURN COUNT(u) > 0 AS userExist
   `
 	params := map[string]interface{}{
