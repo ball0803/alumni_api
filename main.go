@@ -5,6 +5,7 @@ import (
 	"alumni_api/internal/db"
 	"alumni_api/internal/logger"
 	"alumni_api/internal/middlewares"
+	"alumni_api/internal/queue"
 	"alumni_api/internal/routes"
 	"alumni_api/internal/validators"
 	"context"
@@ -31,6 +32,8 @@ func main() {
 	}
 	defer driver.Close(ctx)
 
+	queue.Init()
+
 	// Set up Fiber app
 	app := fiber.New()
 	api := app.Group("/v1")
@@ -47,6 +50,8 @@ func main() {
 	})
 
 	app.Use(middlewares.RequestLogger(logger))
+
+	app.Use(middlewares.REDWithQueueMiddleware(logger))
 
 	routes.UserRoutes(api, driver, logger)
 
