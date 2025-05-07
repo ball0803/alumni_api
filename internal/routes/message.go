@@ -11,6 +11,7 @@ import (
 )
 
 func MessageRoutes(group fiber.Router, driver neo4j.DriverWithContext, logger *zap.Logger) {
+	group.Use("/ws", middlewares.JWTMiddleware(logger))
 	group.Use("/ws", middlewares.WebSocketMiddleware(logger))
 	group.Get("/ws", websocket.New(websockets.WebsocketHandler))
 
