@@ -39,9 +39,9 @@ func GetAllPosts(ctx context.Context, driver neo4j.DriverWithContext, userId str
       author.first_name + " " + author.last_name AS name,
       author.user_id AS user_id,
       author.profile_picture AS profile_picture,
-      COUNT(l) AS likes_count,
-      COUNT(v) AS views_count,
-      COUNT(c) AS comments_count,
+      SIZE(COLLECT(DISTINCT l)) AS likes_count,
+      SIZE(COLLECT(DISTINCT v)) AS views_count,
+      SIZE(COLLECT(DISTINCT c)) AS comments_count,
       CASE WHEN userLike IS NULL THEN false ELSE true END AS has_liked
   `
 
