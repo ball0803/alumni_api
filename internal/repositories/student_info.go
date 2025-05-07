@@ -17,38 +17,10 @@ func AddStudentInfo(ctx context.Context, driver neo4j.DriverWithContext, id stri
 	})
 	defer session.Close(ctx)
 
-	checkUserQuery := `
-    MATCH (u:UserProfile {user_id: $userID})
-    RETURN u LIMIT 1
-  `
-	userResult, err := session.Run(ctx, checkUserQuery, map[string]interface{}{
-		"userID": id,
-	})
-	if err != nil {
-		logger.Error("Failed to check user existence", zap.Error(err))
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to check user existence")
-	}
-	if !userResult.Next(ctx) {
-		logger.Warn("UserProfile not found", zap.String("userID", id))
-		return fiber.NewError(fiber.StatusNotFound, "UserProfile not found")
-	}
-
 	query := `
       MERGE (faculty:Faculty {name: $faculty})
       MERGE (faculty)-[:HAS_DEPARTMENT]->(department:Department {name: $department})
       MERGE (department)-[:HAS_FIELD]->(field:Field {name: $field})
-    `
-
-	params := map[string]interface{}{
-		"userID":     id,
-		"faculty":    college_info.Faculty,
-		"department": college_info.Department,
-		"field":      college_info.Field,
-	}
-
-	if college_info.StudentType != "" {
-		params["studentType"] = college_info.StudentType
-		query += `
       MERGE (field)-[:HAS_STUDENT_TYPE]->(studentType:StudentType {name: $studentType})
 
       WITH field, studentType
@@ -56,15 +28,16 @@ func AddStudentInfo(ctx context.Context, driver neo4j.DriverWithContext, id stri
       MERGE (u)-[:BELONGS_TO_FIELD]->(field)
       MERGE (u)-[:BELONGS_TO_STUDENT_TYPE]->(studentType)
     `
-	} else {
-		query += `
-      WITH field
-      MATCH (u:UserProfile {user_id: $userID})
-      MERGE (u)-[:BELONGS_TO_FIELD]->(field)
-    `
+
+	params := map[string]interface{}{
+		"userID":      id,
+		"faculty":     college_info.Faculty,
+		"department":  college_info.Department,
+		"field":       college_info.Field,
+		"studentType": college_info.StudentType,
 	}
 
-	_, err = session.Run(ctx, query, params)
+	_, err := session.Run(ctx, query, params)
 	if err != nil {
 		logger.Error("Failed to create or connect student info", zap.Error(err))
 		return fiber.NewError(http.StatusInternalServerError, "Failed to create or connect student info")

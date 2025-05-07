@@ -35,7 +35,7 @@ type CollegeInfo struct {
 	Faculty     string `json:"faculty,omitempty" mapstructure:"faculty,omitempty" validate:"required"`
 	Department  string `json:"department,omitempty" mapstructure:"department,omitempty" validate:"required"`
 	Field       string `json:"field,omitempty" mapstructure:"field,omitempty" validate:"required"`
-	StudentType string `json:"student_type,omitempty" mapstructure:"student_type,omitempty" validate:"omitempty"`
+	StudentType string `json:"student_type,omitempty" mapstructure:"student_type,omitempty" validate:"required"`
 }
 
 type Company struct {
