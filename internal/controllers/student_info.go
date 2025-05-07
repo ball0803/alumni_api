@@ -86,7 +86,7 @@ func UpdateStudentInfo(driver neo4j.DriverWithContext, logger *zap.Logger) fiber
 		}
 
 		successMessage := "User student info updated successfully"
-		return HandleSuccess(c, fiber.StatusInternalServerError, successMessage, nil, logger)
+		return HandleSuccess(c, fiber.StatusOK, successMessage, nil, logger)
 	}
 }
 
