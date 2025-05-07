@@ -18,10 +18,13 @@ func VerifyToken(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 		if !ok {
 			return HandleFail(c, fiber.StatusUnauthorized, "Unauthorized claim", logger, nil)
 		}
-
 		ret := map[string]interface{}{
 			"user_id":   claim.UserID,
 			"user_role": claim.Role,
+		}
+
+		if tokenString, ok := auth.ExtractJWT_Cookie(c); ok {
+			ret["jwt"] = tokenString
 		}
 
 		successMessage := "Verify Succesfully"
