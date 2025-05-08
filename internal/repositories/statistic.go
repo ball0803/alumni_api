@@ -87,6 +87,42 @@ func GetPostStat(ctx context.Context, driver neo4j.DriverWithContext, logger *za
 	return posts, nil
 }
 
+func GetActivityStat(ctx context.Context, driver neo4j.DriverWithContext, logger *zap.Logger) (map[string]interface{}, error) {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeRead,
+	})
+	defer session.Close(ctx)
+
+	query := `
+    MATCH (u:UserProfile)
+    WITH 
+      count(CASE WHEN u.is_verify = true THEN 1 END) AS user_count,
+      count(CASE WHEN u.role = "alumnus" THEN 1 END) AS alumni_count
+
+    MATCH (p:Post)
+    WHERE p.post_type = "event"
+    RETURN 
+      user_count,
+      alumni_count,
+      count(p) AS event_count
+  `
+
+	result, err := session.Run(ctx, query, nil)
+	if err != nil {
+		logger.Error("Failed to retrieve registry stat", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to retrieve posts")
+	}
+
+	record, err := result.Single(ctx)
+	if err != nil {
+		logger.Error("Failed to collect results", zap.Error(err))
+		return nil, fiber.NewError(http.StatusInternalServerError, "Failed to collect results")
+	}
+
+	return record.AsMap(), nil
+}
+
 func GetRegistryStat(ctx context.Context, driver neo4j.DriverWithContext, logger *zap.Logger) (map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",

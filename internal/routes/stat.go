@@ -13,6 +13,7 @@ func StatRoutes(group fiber.Router, driver neo4j.DriverWithContext, logger *zap.
 	stat.Use(middlewares.JWTMiddleware(logger))
 
 	stat.Get("/post", controllers.GetPostStat(driver, logger))
+	stat.Get("/activity", controllers.GetRegistryStat(driver, logger))
 	stat.Get("/registry", controllers.GetRegistryStat(driver, logger))
 	stat.Get("/generation", controllers.GetGenerationSTStat(driver, logger))
 	stat.Get("/salary", controllers.GetUserSalary(driver, logger))
