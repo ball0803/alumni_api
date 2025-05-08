@@ -10,7 +10,7 @@ import (
 
 func StatRoutes(group fiber.Router, driver neo4j.DriverWithContext, logger *zap.Logger) {
 	stat := group.Group("/stat")
-	stat.Get("/activity", controllers.GetRegistryStat(driver, logger))
+	stat.Get("/activity", controllers.GetActivityStat(driver, logger))
 
 	statWithAuth := group.Group("/stat")
 	statWithAuth.Use(middlewares.JWTMiddleware(logger))
