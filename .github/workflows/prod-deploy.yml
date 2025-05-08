@@ -17,7 +17,7 @@ jobs:
 
       - name: Copy updated code
         run: |
-          rsync -av --delete ./ ../backend/
+          rsync -av --delete ./ ../../../../backend/
 
       - name: Create .env file
         run: |
