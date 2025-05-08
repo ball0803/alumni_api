@@ -29,6 +29,10 @@ func GetPostStat(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 
 func GetRegistryStat(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		if err := validators.UserAdmin(c); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
 		posts, err := repositories.GetRegistryStat(c.Context(), driver, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
@@ -41,10 +45,6 @@ func GetRegistryStat(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.H
 
 func GetActivityStat(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		if err := validators.UserAdmin(c); err != nil {
-			return HandleFailWithStatus(c, err, logger)
-		}
-
 		posts, err := repositories.GetActivityStat(c.Context(), driver, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
