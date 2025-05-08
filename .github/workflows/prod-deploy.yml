@@ -15,11 +15,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Pull latest changes
+      - name: Copy updated code
         run: |
-          git config --global --add safe.directory /__w/alumni_api/alumni_api
-          git pull origin prod
-          git log -1 --oneline
+          rsync -av --delete ./ ../backend/
 
       - name: Create .env file
         run: |
