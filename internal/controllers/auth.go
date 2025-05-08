@@ -178,10 +178,12 @@ func RegistryAlumnus(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.H
 
 func VerifyAccount(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		verifyToken := c.Query("token")
-		// client := config.GetEnv("CLIENT", "")
+		var req models.TokenVerify
+		if err := validators.Request(c, &req); err != nil {
+			return HandleFail(c, fiber.StatusBadRequest, "Validation failed", logger, err)
+		}
 
-		claim, err := auth.ParseVerification(verifyToken)
+		claim, err := auth.ParseVerification(req.Token)
 		if err != nil {
 			return HandleError(c, fiber.StatusInternalServerError, err.Error(), logger, nil)
 		}
