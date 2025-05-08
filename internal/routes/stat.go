@@ -10,12 +10,14 @@ import (
 
 func StatRoutes(group fiber.Router, driver neo4j.DriverWithContext, logger *zap.Logger) {
 	stat := group.Group("/stat")
-	stat.Use(middlewares.JWTMiddleware(logger))
-
-	stat.Get("/post", controllers.GetPostStat(driver, logger))
 	stat.Get("/activity", controllers.GetRegistryStat(driver, logger))
-	stat.Get("/registry", controllers.GetRegistryStat(driver, logger))
-	stat.Get("/generation", controllers.GetGenerationSTStat(driver, logger))
-	stat.Get("/salary", controllers.GetUserSalary(driver, logger))
-	stat.Get("/job", controllers.GetUserJob(driver, logger))
+
+	statWithAuth := group.Group("/stat")
+	statWithAuth.Use(middlewares.JWTMiddleware(logger))
+
+	statWithAuth.Get("/post", controllers.GetPostStat(driver, logger))
+	statWithAuth.Get("/registry", controllers.GetRegistryStat(driver, logger))
+	statWithAuth.Get("/generation", controllers.GetGenerationSTStat(driver, logger))
+	statWithAuth.Get("/salary", controllers.GetUserSalary(driver, logger))
+	statWithAuth.Get("/job", controllers.GetUserJob(driver, logger))
 }

@@ -85,6 +85,10 @@ jobs:
       - name: Stop old container
         run: |
           docker-compose stop api-$OLD_COLOR
+
+      - name: Restart nginx
+        run: |
+          docker-compose restart nginx
           
       - name: Clean up
         run: |
