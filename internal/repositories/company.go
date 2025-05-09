@@ -10,7 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func CompanyFullTextSearch(ctx context.Context, driver neo4j.DriverWithContext, query_term models.UserFulltextSearch, logger *zap.Logger) ([]map[string]interface{}, error) {
+func CompanyFullTextSearch(ctx context.Context, driver neo4j.DriverWithContext, query_term string, logger *zap.Logger) ([]map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeRead,
@@ -26,7 +26,7 @@ func CompanyFullTextSearch(ctx context.Context, driver neo4j.DriverWithContext, 
     LIMIT 10
   `
 	params := map[string]interface{}{
-		"name": "*" + query_term.Name + "*",
+		"name": "*" + query_term + "*",
 	}
 
 	// Execute the query

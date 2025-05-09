@@ -15,13 +15,9 @@ import (
 
 func CompanyFullTextSearch(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		var req models.UserFulltextSearch
+		query := c.Query("query")
 
-		if err := validators.Request(c, &req); err != nil {
-			return HandleFailWithStatus(c, err, logger)
-		}
-
-		users, err := repositories.CompanyFullTextSearch(c.Context(), driver, req, logger)
+		users, err := repositories.CompanyFullTextSearch(c.Context(), driver, query, logger)
 		if err != nil {
 			return HandleErrorWithStatus(c, err, logger)
 		}
