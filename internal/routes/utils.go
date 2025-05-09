@@ -13,5 +13,6 @@ func UtilsRoute(group fiber.Router, driver neo4j.DriverWithContext, logger *zap.
 	utils.Use(middlewares.JWTMiddleware(logger))
 
 	utils.Get("/report", controllers.FetchReport(driver, logger))
+	utils.Get("/fulltext_search/company", controllers.CompanyFullTextSearch(driver, logger))
 	utils.Post("/report", controllers.Report(driver, logger))
 }

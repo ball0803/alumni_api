@@ -10,6 +10,49 @@ import (
 	"go.uber.org/zap"
 )
 
+func CompanyFullTextSearch(ctx context.Context, driver neo4j.DriverWithContext, query_term models.UserFulltextSearch, logger *zap.Logger) ([]map[string]interface{}, error) {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeRead,
+	})
+	defer session.Close(ctx)
+
+	query := `
+    CALL db.index.fulltext.queryNodes("company_name_fulltext", $name) YIELD node, score
+    RETURN 
+        node.name as name,
+        score
+    ORDER BY score DESC
+    LIMIT 10
+  `
+	params := map[string]interface{}{
+		"name": "*" + query_term.Name + "*",
+	}
+
+	// Execute the query
+	result, err := session.Run(ctx, query, params)
+
+	if err != nil {
+		logger.Error("Failed to run query", zap.Error(err))
+		return nil, fiber.NewError(fiber.StatusInternalServerError, "Error retrieving data")
+	}
+
+	// Collect query results
+	records, err := result.Collect(ctx)
+	if err != nil {
+		logger.Error("Failed to collect query results", zap.Error(err))
+		return nil, fiber.NewError(fiber.StatusInternalServerError, "Error retrieving data")
+	}
+
+	var companies []map[string]interface{}
+
+	for _, record := range records {
+		companies = append(companies, record.AsMap())
+	}
+
+	return companies, nil
+}
+
 func AddUserCompany(ctx context.Context, driver neo4j.DriverWithContext, id string, companies models.UserRequestCompany, logger *zap.Logger) ([]map[string]interface{}, error) {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",

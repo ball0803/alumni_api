@@ -13,6 +13,24 @@ import (
 	"go.uber.org/zap"
 )
 
+func CompanyFullTextSearch(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		var req models.UserFulltextSearch
+
+		if err := validators.Request(c, &req); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
+
+		users, err := repositories.CompanyFullTextSearch(c.Context(), driver, req, logger)
+		if err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
+
+		successMessage := "Company retrieved successfully"
+		return HandleSuccess(c, fiber.StatusOK, successMessage, users, logger)
+	}
+}
+
 func AddUserCompany(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req models.UserRequestCompany
