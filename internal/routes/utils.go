@@ -10,9 +10,11 @@ import (
 
 func UtilsRoute(group fiber.Router, driver neo4j.DriverWithContext, logger *zap.Logger) {
 	utils := group.Group("/utils")
-	utils.Use(middlewares.JWTMiddleware(logger))
-
-	utils.Get("/report", controllers.FetchReport(driver, logger))
 	utils.Get("/fulltext_search/company", controllers.CompanyFullTextSearch(driver, logger))
-	utils.Post("/report", controllers.Report(driver, logger))
+
+	utilsWithAuth := group.Group("/utils")
+	utilsWithAuth.Use(middlewares.JWTMiddleware(logger))
+
+	utilsWithAuth.Get("/report", controllers.FetchReport(driver, logger))
+	utilsWithAuth.Post("/report", controllers.Report(driver, logger))
 }
