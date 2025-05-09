@@ -50,6 +50,10 @@ func CompanyFullTextSearch(ctx context.Context, driver neo4j.DriverWithContext, 
 		companies = append(companies, record.AsMap())
 	}
 
+	if companies == nil {
+		companies = []map[string]interface{}{}
+	}
+
 	return companies, nil
 }
 
