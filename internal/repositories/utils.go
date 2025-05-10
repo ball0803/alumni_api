@@ -19,9 +19,24 @@ func FetchReport(ctx context.Context, driver neo4j.DriverWithContext, logger *za
 	defer session.Close(ctx)
 
 	query := `
-    MATCH (r:Report)
-    WHERE r.status = "pending"
+    MATCH (author:UserProfile)-[:HAS_POST]->(p:Post)-[:BEEN_REPORT]->(r:Report)<-[:REPORT]-(u:UserProfile)
     RETURN
+      p.post_id AS post_id,
+      p.title AS title,
+      p.content AS content,
+      p.post_type AS post_type,
+      p.media_urls AS media_urls,
+
+      author.first_name + " " + author.last_name AS author_name,
+      author.username AS author_username,
+      author.user_id AS author_user_id,
+      author.profile_picture AS author_profile_picture,
+
+      u.first_name + " " + author.last_name AS reporter_name,
+      u.username AS reporter_username,
+      u.user_id AS reporter_user_id,
+      u.profile_picture AS reporter_profile_picture,
+
       r.report_id AS report_id,
       r.additional AS additional,
       r.category AS category,
