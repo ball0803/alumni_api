@@ -19,10 +19,16 @@ func FetchReport(ctx context.Context, driver neo4j.DriverWithContext, logger *za
 	defer session.Close(ctx)
 
 	query := `
-  MATCH (r:Report)
-  WHERE r.status = "pending"
-  RETURN r
-  LIMIT 100
+    MATCH (r:Report)
+    WHERE r.status = "pending"
+    RETURN
+      r.report_id AS report_id,
+      r.additional AS additional,
+      r.category AS category,
+      r.status AS status,
+      r.type AS type,
+      r.created_timestamp AS created_timestamp
+    LIMIT 100
   `
 
 	var params = map[string]interface{}{}
