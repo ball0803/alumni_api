@@ -62,4 +62,6 @@ var UserDecryptField = []string{
 	"companies.company",
 	"companies.address",
 	"companies.position",
+	"companies.salary_min",
+	"companies.salary_max",
 }

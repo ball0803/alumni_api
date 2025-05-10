@@ -58,9 +58,9 @@ func GetUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 	return func(c *fiber.Ctx) error {
 		id := c.Params("id")
 
-		// if err := validators.UUID(id); err != nil {
-		// 	return HandleFailWithStatus(c, err, logger)
-		// }
+		if err := validators.UUID(id); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
 
 		exists, err := services.UserExist(c.Context(), driver, id, logger)
 		if err != nil {
@@ -71,9 +71,9 @@ func GetUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Handl
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
 		}
 
-		// if err := validators.SameUser(c, id); err != nil {
-		// 	return HandleFailWithStatus(c, err, logger)
-		// }
+		if err := validators.SameUser(c, id); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
 
 		user, err := repositories.FetchUserByID(c.Context(), driver, id, logger)
 		if err != nil {
@@ -96,9 +96,9 @@ func UpdateUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 
 		id := c.Params("id")
 
-		// if err := validators.UUID(id); err != nil {
-		// 	return HandleErrorWithStatus(c, err, logger)
-		// }
+		if err := validators.UUID(id); err != nil {
+			return HandleErrorWithStatus(c, err, logger)
+		}
 
 		exists, err := services.UserExist(c.Context(), driver, id, logger)
 		if err != nil {
@@ -109,9 +109,9 @@ func UpdateUserByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleFail(c, fiber.StatusNotFound, fmt.Sprintf("User: %s not found", id), logger, nil)
 		}
 
-		// if err := validators.SameUser(c, id); err != nil {
-		// 	return HandleFailWithStatus(c, err, logger)
-		// }
+		if err := validators.SameUser(c, id); err != nil {
+			return HandleFailWithStatus(c, err, logger)
+		}
 
 		if err := validators.Request(c, &req); err != nil {
 			return HandleFailWithStatus(c, err, logger)

@@ -166,7 +166,9 @@ func FetchUserByID(ctx context.Context, driver neo4j.DriverWithContext, id strin
           collect({
             company: c.name,
             address: c.address,
-            position: r.position
+            position: r.position,
+            salary_min: r.salary_min,
+            salary_max: r.salary_max
           }) AS companies,
           {
             email: u.email,
