@@ -164,6 +164,7 @@ func FetchUserByID(ctx context.Context, driver neo4j.DriverWithContext, id strin
             student_type: st.name
           } AS college_info,
           collect({
+            company_id: c.company_id,
             company: c.name,
             address: c.address,
             position: r.position,
