@@ -755,7 +755,7 @@ func RequestAlumniOneTimeRegistry(ctx context.Context, driver neo4j.DriverWithCo
 	return ret, nil
 }
 
-func ConfirmAlumnusRole(ctx context.Context, driver neo4j.DriverWithContext, request_id string, logger *zap.Logger) error {
+func ApproveAlumnusRole(ctx context.Context, driver neo4j.DriverWithContext, request_id string, logger *zap.Logger) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "neo4j",
 		AccessMode:   neo4j.AccessModeWrite,
@@ -764,8 +764,36 @@ func ConfirmAlumnusRole(ctx context.Context, driver neo4j.DriverWithContext, req
 
 	query := `
     MATCH (u:UserProfile)-[:HAS_REQUEST]->(r:Request {request_id: $request_id})
-    SET u.role = "alumnus"
-    DETACH DELETE r
+    WHERE r.status = "pending"
+    SET
+      u.role = "alumnus",
+      r.status = "approve"
+  `
+	params := map[string]interface{}{
+		"request_id": request_id,
+	}
+
+	_, err := session.Run(ctx, query, params)
+	if err != nil {
+		logger.Error("Failed to query user", zap.Error(err))
+		return fmt.Errorf("error querying user: %w", err)
+	}
+
+	return nil
+}
+
+func RejectAlumnusRole(ctx context.Context, driver neo4j.DriverWithContext, request_id string, logger *zap.Logger) error {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{
+		DatabaseName: "neo4j",
+		AccessMode:   neo4j.AccessModeWrite,
+	})
+	defer session.Close(ctx)
+
+	query := `
+    MATCH (u:UserProfile)-[:HAS_REQUEST]->(r:Request {request_id: $request_id})
+    WHERE r.status = "pending"
+    SET
+      r.status = "reject"
   `
 	params := map[string]interface{}{
 		"request_id": request_id,
@@ -787,20 +815,18 @@ func RequestAlumnusRole(ctx context.Context, driver neo4j.DriverWithContext, use
 	})
 	defer session.Close(ctx)
 
-	request_id := uuid.New().String()
-
 	query := `
     MATCH (u:UserProfile {user_id: $user_id})
-    MERGE (r:Request {
-      type: "role_request",
-      timestamp: timestamp()
-    })<-[:HAS_REQUEST]-(u)
+    MERGE (r:Request {type: "role_request"})<-[:HAS_REQUEST]-(u)
     ON CREATE SET
-      r.request_id = $request_id
+      r.status = "pending",
+      r.created_timestamp = timestamp(),
+      r.request_id = randomUUID()
+    ON MATCH SET
+        r.updated_timestamp = timestamp()
   `
 	params := map[string]interface{}{
-		"user_id":    user_id,
-		"request_id": request_id,
+		"user_id": user_id,
 	}
 
 	_, err := session.Run(ctx, query, params)
@@ -866,6 +892,7 @@ func GetAllRequest(ctx context.Context, driver neo4j.DriverWithContext, logger *
       },
       request: {
         type: request.type,
+        status: request.status,
         request_id: request.request_id,
         timestamp: request.timestamp
       }

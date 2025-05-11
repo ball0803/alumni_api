@@ -30,5 +30,6 @@ func AuthRoutes(group fiber.Router, driver neo4j.DriverWithContext, logger *zap.
 
 	authWithAuth.Get("/request", controllers.GetAllRequest(driver, logger))
 	authWithAuth.Post("/request/role", controllers.RequestAlumnusRole(driver, logger))
-	authWithAuth.Post("/request/:request_id/confirm", controllers.ConfirmAlumnusRole(driver, logger))
+	authWithAuth.Post("/request/:request_id/approve", controllers.ApproveAlumnusRole(driver, logger))
+	authWithAuth.Post("/request/:request_id/reject", controllers.RejectAlumnusRole(driver, logger))
 }
