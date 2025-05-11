@@ -846,9 +846,9 @@ func GetAllRequest(ctx context.Context, driver neo4j.DriverWithContext, logger *
 	defer session.Close(ctx)
 
 	query := `
-    MATCH (user:UserProfile)-[:HAS_REQUEST]->(request:Request)
-    OPTIONAL MATCH (user)-[workRel:HAS_WORK_WITH]->(company:Company)
-    OPTIONAL MATCH (user)-->(studentType:StudentType)<--(field:Field)<--(department:Department)<--(faculty:Faculty)
+    MATCH (u:UserProfile)-[:HAS_REQUEST]->(r:Request)
+    OPTIONAL MATCH (u)-[workRel:HAS_WORK_WITH]->(company:Company)
+    OPTIONAL MATCH (u)-->(st:StudentType)<--(fld:Field)<--(d:Department)<--(f:Faculty)
 
     // First collect all companies for each user
     WITH user, request, faculty, department, field, studentType,
@@ -890,10 +890,10 @@ func GetAllRequest(ctx context.Context, driver neo4j.DriverWithContext, logger *
         companies: companies
       },
       request: {
-        type: request.type,
-        status: request.status,
-        request_id: request.request_id,
-        timestamp: request.timestamp
+        type: r.type,
+        status: r.status,
+        request_id: r.request_id,
+        timestamp: r.timestamp
       }
     } AS result
   `
