@@ -50,9 +50,10 @@ func UsernameVerify(ctx context.Context, driver neo4j.DriverWithContext, usernam
 	defer session.Close(ctx)
 
 	query := `
-    MATCH (u:UserProfile {username: $username})
-    RETURN COALESCE(u.is_verify, false) AS is_verify
-  `
+		MATCH (u:UserProfile)
+    WHERE u.username = $username OR u.email = $username
+		RETURN COALESCE(u.is_verify, false) AS is_verify
+	`
 
 	params := map[string]interface{}{
 		"username": username,
@@ -64,19 +65,14 @@ func UsernameVerify(ctx context.Context, driver neo4j.DriverWithContext, usernam
 		return false, fiber.NewError(http.StatusInternalServerError, "Error checking user existence")
 	}
 
-	record, err := result.Single(ctx)
-	if err != nil {
-		logger.Error("Error retrieving result", zap.Error(err))
-		return false, fiber.NewError(http.StatusInternalServerError, "Error retrieving result")
+	if result.Next(ctx) {
+		isVerify, ok := result.Record().Get("is_verify")
+		if ok {
+			return isVerify.(bool), nil
+		}
 	}
 
-	isVerify, ok := record.Get("is_verify")
-	if !ok {
-		logger.Warn("User not found")
-		return false, fiber.NewError(http.StatusInternalServerError, "Error retrieving result")
-	}
-
-	return isVerify.(bool), nil
+	return false, nil
 }
 
 func UserVerify(ctx context.Context, driver neo4j.DriverWithContext, id string, logger *zap.Logger) (bool, error) {
