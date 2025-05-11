@@ -851,7 +851,7 @@ func GetAllRequest(ctx context.Context, driver neo4j.DriverWithContext, logger *
     OPTIONAL MATCH (u)-->(st:StudentType)<--(fld:Field)<--(d:Department)<--(f:Faculty)
 
     // First collect all companies for each user
-    WITH user, request, faculty, department, field, studentType,
+    WITH u, r, f, d, fld, st,
         collect(
           CASE WHEN company IS NOT NULL THEN {
             company: company.name,
