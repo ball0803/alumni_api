@@ -863,32 +863,31 @@ func GetAllRequest(ctx context.Context, driver neo4j.DriverWithContext, logger *
     // Then build the final result structure
     RETURN {
       user: {
-        user_id: user.user_id,
-        username: user.username,
-        gender: user.gender,
-        dob: toString(user.dob),
-        name: user.first_name + " " + user.last_name,
-        name_eng: user.first_name_eng + " " + user.last_name_eng,
-        profile_picture: user.profile_picture,
-        role: user.role,
-        student_info: {
-          faculty: faculty.name,
-          department: department.name,
-          field: field.name,
-          student_type: studentType.name,
-          education_level: user.education_level,
-          admit_year: user.admit_year,
-          graduate_year: user.graduate_year,
-          gpax: user.gpax
-        },
-        companies: companies,
-        contact_info: {
-          email: user.email,
-          github: user.github,
-          linkedin: user.linkdin,
-          facebook: user.facebook,
-          phone: user.phone
-        }
+        user_id: u.user_id,
+        username: u.username,
+        first_name: u.first_name,
+        last_name: u.last_name,
+        first_name_eng: u.first_name_eng,
+        last_name_eng: u.last_name_eng,
+        name: u.first_name + " " + u.last_name,
+        name_eng: u.first_name_eng + " " + u.last_name_eng,
+        profile_picture: u.profile_picture,
+        role: u.role,
+        student_id: u.student_id,
+        generation: u.generation,
+        admit_year: u.admit_year,
+        graduate_year: u.graduate_year,
+        gpax: u.gpax,
+        faculty: f.name,
+        department: d.name,
+        field: fld.name,
+        student_type: st.name,
+        email: u.email,
+        github: u.github,
+        linkedin: u.linkdin,
+        facebook: u.facebook,
+        phone: u.phone,
+        companies: companies
       },
       request: {
         type: request.type,
