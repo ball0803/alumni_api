@@ -21,7 +21,7 @@ func Login(ctx context.Context, driver neo4j.DriverWithContext, username string,
 
 	query := `
     MATCH (u:UserProfile)
-    WHERE u.username = $username AND u.is_verify = true
+    WHERE (u.username = $username OR u.email = $username) AND u.is_verify = true
     RETURN u.user_id AS user_id, u.user_password AS user_password, u.role AS role,
       u.admit_year AS admit_year
   `
