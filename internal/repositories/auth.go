@@ -893,7 +893,8 @@ func GetAllRequest(ctx context.Context, driver neo4j.DriverWithContext, logger *
         type: r.type,
         status: r.status,
         request_id: r.request_id,
-        timestamp: r.timestamp
+        created_timestamp: r.created_timestamp,
+        updated_timestamp: r.updated_timestamp
       }
     } AS result
   `
