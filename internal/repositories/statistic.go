@@ -198,27 +198,20 @@ func GetGenerationSTStat(ctx context.Context, driver neo4j.DriverWithContext, ge
     WITH $generation AS target_generations
     UNWIND target_generations AS gen
 
-    // First get all student types for this generation
     OPTIONAL MATCH (st:StudentType)<--(u:UserProfile)
     WHERE u.generation = gen
-    WITH gen, collect(DISTINCT st) AS student_types
+    WITH gen, collect(DISTINCT st.name) AS student_type_names
 
-    // Then count users for each student type
-    UNWIND student_types AS st
-    WITH gen, st.name AS student_type, 
-        SIZE([(st)<--(u:UserProfile) WHERE u.generation = gen | u]) AS count
-
-    // Group by generation
-    WITH gen, 
-        collect(student_type) AS student_types,
-        collect(count) AS counts
-
-    // Format the final output
+    UNWIND student_type_names AS student_type
+    WITH gen, student_type,
+        SIZE([(u:UserProfile)-[:BELONGS_TO_STUDENT_TYPE]->(:StudentType {name: student_type}) 
+              WHERE u.generation = gen | u]) AS count
+    WITH gen, collect(student_type) AS key, collect(count) AS value
     RETURN {
-        gen: gen,
+      gen: gen,
       data: {
-        key: student_types,
-        value: counts
+        key: key,
+        value: value
       }
     } AS generation_data
   `
