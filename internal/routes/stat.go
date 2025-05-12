@@ -17,7 +17,7 @@ func StatRoutes(group fiber.Router, driver neo4j.DriverWithContext, logger *zap.
 
 	statWithAuth.Get("/post", controllers.GetPostStat(driver, logger))
 	statWithAuth.Get("/registry", controllers.GetRegistryStat(driver, logger))
-	statWithAuth.Get("/generation", controllers.GetGenerationSTStat(driver, logger))
+	statWithAuth.Post("/generation", controllers.GetGenerationSTStat(driver, logger))
 	statWithAuth.Get("/salary", controllers.GetUserSalary(driver, logger))
 	statWithAuth.Get("/job", controllers.GetUserJob(driver, logger))
 }
