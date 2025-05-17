@@ -128,8 +128,10 @@ func UpdatePostByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleErrorWithStatus(c, err, logger)
 		}
 
-		if err := validators.SameUser(c, userID); err != nil {
-			return HandleFailWithStatus(c, err, logger)
+		err1 := validators.SameUser(c, userID)
+		err2 := validators.UserAdmin(c)
+		if err1 != nil && err2 != nil {
+			return HandleFailWithStatus(c, err1, logger)
 		}
 
 		var req models.UpdatePostRequest
@@ -161,8 +163,10 @@ func DeletePostByID(driver neo4j.DriverWithContext, logger *zap.Logger) fiber.Ha
 			return HandleErrorWithStatus(c, err, logger)
 		}
 
-		if err := validators.SameUser(c, userID); err != nil {
-			return HandleFailWithStatus(c, err, logger)
+		err1 := validators.SameUser(c, userID)
+		err2 := validators.UserAdmin(c)
+		if err1 != nil && err2 != nil {
+			return HandleFailWithStatus(c, err1, logger)
 		}
 
 		err = repositories.DeletePostByID(c.Context(), driver, postID, logger)
